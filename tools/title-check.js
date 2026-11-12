@@ -1,10 +1,10 @@
 const fs = require('fs');
 const src = fs.readFileSync(require('path').join(__dirname, '..', 'extension', 'content.js'), 'utf8');
 const a = src.indexOf('const clean ='), b = src.indexOf('function fromYtm');
-const code = src.slice(a, b) + '\nmodule.exports = { fromTitle };';
+const code = src.slice(a, b) + '\nmodule.exports = { fromTitle, sectionMatchesVideo };';
 const m = { exports: {} };
 new Function('module', code)(m);
-const { fromTitle } = m.exports;
+const { fromTitle, sectionMatchesVideo } = m.exports;
 let fails = 0;
 const t = (name, title, channel, want) => {
   const g = fromTitle(title, channel);
@@ -22,5 +22,11 @@ t('no channel', 'Artist - Song', '', { track: 'Song', artist: 'Artist' });
 t('left related, right too (ambiguous): keep order', 'BTS - BTS Dynamite', 'BTS', { track: 'BTS Dynamite', artist: 'BTS' });
 t('Topic channel', 'Song - Artist', 'Artist - Topic', { track: 'Song', artist: 'Artist' });
 t('single letter channel ignored', 'X - Y', 'X', { track: 'Y', artist: 'X' });
+const sec = (name, out, vm, want) => { const g = sectionMatchesVideo(out, vm); const ok = g === want; if (!ok) fails++; console.log((ok ? 'PASS ' : 'FAIL ') + name + '  ->  ' + g); };
+sec('section of the previous song (stale rows) is refused', { track: 'ㄷ.R.E.A.M' }, { title: '이한울 - 얼음 (feat. neponay) [Lyric Video]', desc: 'lyrics by someone' }, false);
+sec('section whose song is in the title is trusted', { track: 'Dynamite' }, { title: 'BTS - Dynamite (Official MV)', desc: '' }, true);
+sec('song only in the description is trusted', { track: 'Hype Boy' }, { title: '뉴진스 하입보이', desc: 'NewJeans - Hype Boy (official audio)' }, true);
+sec('no main data -> refused', { track: 'Anything' }, null, false);
+sec('one-letter track name is never trusted', { track: 'X' }, { title: 'X marks', desc: '' }, false);
 console.log(fails ? fails + ' FAILED' : 'ALL PASS');
 process.exit(fails);

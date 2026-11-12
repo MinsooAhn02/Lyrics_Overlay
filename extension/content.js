@@ -72,6 +72,15 @@
     return { track, artist: clean(artist, 200), album: '' };
   }
 
+  // The watch page swaps its "music in this video" rows AFTER the url / video-id attribute change, so right after a
+  // navigation they still describe the PREVIOUS song. A song name that appears in neither this video's title nor its
+  // description cannot be trusted for this video.
+  const normKey = (x) => String(x || '').toLowerCase().replace(/[^\p{L}\p{N}]+/gu, '');
+  function sectionMatchesVideo(out, m) {
+    const t = normKey(out.track);
+    return t.length >= 2 && !!m && (normKey(m.title).includes(t) || normKey(m.desc).includes(t));
+  }
+
   function fromYtm(m) {
     try {
       if (!IS_MUSIC_HOST) return null;
@@ -93,7 +102,7 @@
     } catch (e) { return null; }
   }
 
-  function fromMusicSection(videoId) {
+  function fromMusicSection(videoId, m) {
     try {
       if (IS_MUSIC_HOST) return null;
       const flexy = document.querySelector('ytd-watch-flexy');
@@ -107,7 +116,7 @@
         else if (ARTIST_LABELS.test(label) && !out.artist) out.artist = val;
         else if (ALBUM_LABELS.test(label) && !out.album) out.album = val;
       }
-      return out.track && out.artist ? out : null;
+      return out.track && out.artist && sectionMatchesVideo(out, m) ? out : null;
     } catch (e) { return null; }
   }
 
@@ -134,7 +143,7 @@
   function musicMeta(videoId, m) {
     const empty = { track: '', artist: '', album: '', metaSource: '' };
     if (!m) return empty; // main-world data is for another video (or not ready): send nothing rather than stale values
-    const tries = [['ytm', () => fromYtm(m)], ['musicSection', () => fromMusicSection(videoId)], ['topic', () => fromTopic(m)], ['title', () => fromTitle(m.title || '', m.author)]];
+    const tries = [['ytm', () => fromYtm(m)], ['musicSection', () => fromMusicSection(videoId, m)], ['topic', () => fromTopic(m)], ['title', () => fromTitle(m.title || '', m.author)]];
     for (const [src, f] of tries) {
       let r = null;
       try { r = f(); } catch (e) { /* defensive */ }

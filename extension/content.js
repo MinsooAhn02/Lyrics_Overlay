@@ -157,12 +157,22 @@
   const NON_MUSIC = /^(Gaming|News & Politics|Education|Howto & Style|Science & Technology|Sports|Autos & Vehicles|Pets & Animals|Travel & Events|Nonprofits & Activism)$/;
   const musicLike = (cat, sec, hasList) => !!(!cat || cat === 'Music' || (!NON_MUSIC.test(cat) && ((sec > 0 && sec <= 720) || hasList))); // hasList: mix with a timestamped track list
 
+  let staleVid = '', staleSince = 0;
+  const STALE_WAIT_MS = 4000;
+
   function snapshot() {
     const v = getVideo();
     if (!v || location.pathname.startsWith('/shorts/')) return null;
     const videoId = new URLSearchParams(location.search).get('v') || (main && main.videoId);
     if (!videoId || !/^[A-Za-z0-9_-]{11}$/.test(videoId)) return null;
     const sameVideo = !!main && main.videoId === videoId;
+    // Right after a navigation the url already names the new video while the player data (and document.title) still
+    // describe the previous one: reporting now would pair the new video id with the OLD title. Wait for the player data
+    // (it follows within ~1 s); if it never catches up (4 s), report with what we have, as before.
+    if (main && main.videoId && !sameVideo) {
+      if (staleVid !== videoId) { staleVid = videoId; staleSince = Date.now(); }
+      if (Date.now() - staleSince < STALE_WAIT_MS) return null;
+    } else { staleVid = ''; }
     if (sameVideo && main.isLive) return null;
     let dur = v.duration;
     if (dur === Infinity) return null; // live stream

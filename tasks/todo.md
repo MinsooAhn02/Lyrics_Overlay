@@ -82,3 +82,7 @@
 - 완료: 카테고리가 Music 이 아니어도 12분 이하(또는 시간표 있는 긴 영상)는 음악 취급, 일반 텍스트 가사를 자동 생성 자막으로 싱크(FromPlain), 영상 전환 직후 이전 곡 제목이 새 영상 ID에 붙던 문제(플레이어 정보가 따라올 때까지 최대 4초 보류), 조회/전달 로그(captions.log)
 - 실제 확인: 염따 곡에서 aligned 21/29줄 앵커, 일반 텍스트 -> 싱크 전달 로그 확인
 - 검증 스크립트: title/background/music/snapshot-check.js, aligner-check, mix-check
+
+## 진행 기록 (10차)
+- 완료: 화면 제목 정리(TitleDisplay: 이모지/기호/해시태그/[Official MV] 제거, feat. 유지), 비음악 오분류 영상 ♪ 버튼(force-music.json), 건너뜀·확장 보고 로그
+- 검증: tools\display-check 17/17(정리기를 끄면 11건 실패 확인)

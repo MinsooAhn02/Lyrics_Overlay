@@ -1155,7 +1155,7 @@ public partial class MainWindow : Window
     {
         if (_lastNp.HasSession && !string.IsNullOrWhiteSpace(_lastNp.Title))
         {
-            HeaderTitle.Text = _lastNp.Title;
+            HeaderTitle.Text = TitleDisplay.Clean(_lastNp.Title);   // no emoji / hashtags / [Official MV] clutter
             HeaderInfo.Visibility = Visibility.Visible;
         }
         else
@@ -1605,9 +1605,10 @@ public partial class MainWindow : Window
         PlainScroll.Visibility = Visibility.Collapsed;
 
         StatusText.Inlines.Clear();
-        string track = !string.IsNullOrWhiteSpace(_lastNp.Artist)
-            ? $"{_lastNp.Title} — {_lastNp.Artist}"
-            : _lastNp.Title;
+        string shownTitle = TitleDisplay.Clean(_lastNp.Title), shownArtist = TitleDisplay.Clean(_lastNp.Artist);
+        string track = !string.IsNullOrWhiteSpace(shownArtist)
+            ? $"{shownTitle} — {shownArtist}"
+            : shownTitle;
         if (!string.IsNullOrWhiteSpace(track))
         {
             StatusText.Inlines.Add(new System.Windows.Documents.Run(track)

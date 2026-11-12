@@ -332,7 +332,7 @@ public sealed class BrowserBridge : IDisposable
         finally { System.Buffers.ArrayPool<byte>.Shared.Return(chunk); }
     }
 
-    private static readonly HashSet<string> CaptionStatuses = new() { "ok", "none", "empty", "error" };
+    private static readonly HashSet<string> CaptionStatuses = new() { "ok", "none", "empty", "nopot", "error" };
 
     /// <summary>{"videoId","status","lang","name","lines":[[ms,"text"],...]}: at most 600 lines of 300 chars; unknown status/shape = invalid.</summary>
     private static bool TryParseCaptions(byte[] body, out CaptionsInfo? caps)

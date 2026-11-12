@@ -25,11 +25,16 @@
   // (PerformanceObserver), and if the player has not asked for captions yet, make it do so invisibly for a moment.
   const potUrls = new Map(); // videoId -> player-made timedtext URL carrying pot
   let capVideo = null;
+  const retried = new Set();
+  let capRetry = null; // video whose attempt ended without a pot: retried once when its pot shows up later
   const notePot = (name) => {
     try {
       if (!name.includes('/api/timedtext')) return;
       const u = new URL(name);
-      if (u.searchParams.get('pot') && u.searchParams.get('v')) potUrls.set(u.searchParams.get('v'), name);
+      const v = u.searchParams.get('v');
+      if (!u.searchParams.get('pot') || !v) return;
+      potUrls.set(v, name);
+      if (v === capRetry && v === capVideo) { capRetry = null; capVideo = null; } // the next post() (<= 1 s) reads it again
     } catch (err) { /* ignore */ }
   };
   try {
@@ -83,7 +88,10 @@
     if (!pl || !pl.loadModule || !pl.setOption) return;
     let had = null;
     try { had = pl.getOption('captions', 'track'); } catch (e) { /* ignore */ }
-    if (had && had.languageCode) return; // captions already on: the player's own request is already recorded
+    if (had && had.languageCode) { // captions already on: the player makes its own request (right after a reload maybe not yet)
+      for (let i = 0; i < 16 && !potUrls.has(vid); i++) await sleep(250);
+      return;
+    }
     const st = document.createElement('style');
     st.textContent = '.ytp-caption-window-container{visibility:hidden!important}';
     document.head.appendChild(st);
@@ -111,6 +119,7 @@
       await probePot(vid, track);
       res = await fetchLines(withPot(track.baseUrl, vid), words);
     }
+    if (!res.lines.length && !potUrls.has(vid)) res.status = 'nopot'; // log tells "no token" apart from "YouTube sent nothing"
     return res;
   }
 
@@ -155,6 +164,11 @@
         } catch (e) { out.asr = { status: 'error', lang: '', lines: [] }; }
       }
     } catch (e) { out.status = 'error'; out.lines = []; }
+    if ((out.status === 'nopot' || out.asr?.status === 'nopot') && !retried.has(vid)) {
+      retried.add(vid);
+      if (potUrls.has(vid)) { if (capVideo === vid) capVideo = null; } // pot came in while we were still busy: retry now
+      else capRetry = vid;
+    }
     if (capVideo === vid) window.postMessage(out, location.origin);
   }
   // content.js delegates seeks here: the player API keeps YouTube's own state (UI, buffering) consistent.

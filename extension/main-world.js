@@ -199,6 +199,21 @@
     window.postMessage({ src: 'lotg-list', req: d.req, list: d.list, ...reply }, location.origin);
   });
 
+  // Shuffle move through YouTube's in-page router (what clicking a playlist item does); content.js falls back to a full load.
+  window.addEventListener('message', (e) => {
+    const d = e.data;
+    if (e.source !== window || e.origin !== location.origin || !d || d.src !== 'lotg-cmd' || d.type !== 'nav') return;
+    if (!/^[A-Za-z0-9_-]{11}$/.test(d.videoId) || !/^[A-Za-z0-9_-]{10,64}$/.test(d.list)) return;
+    const url = `/watch?v=${d.videoId}&list=${d.list}`;
+    const detail = { endpoint: { commandMetadata: { webCommandMetadata: { url, webPageType: 'WEB_PAGE_TYPE_WATCH', rootVe: 3832 } },
+                                 watchEndpoint: { videoId: d.videoId, playlistId: d.list } } };
+    try {
+      const app = document.querySelector('ytd-app');
+      if (app && typeof app.fire === 'function') app.fire('yt-navigate', detail);
+      else if (app) app.dispatchEvent(new CustomEvent('yt-navigate', { detail, bubbles: true, composed: true }));
+    } catch (err) { /* content.js falls back to a full page load */ }
+  });
+
   window.addEventListener('message', (e) => {
     const d = e.data;
     if (e.source !== window || e.origin !== location.origin || !d || d.src !== 'lotg-cmd' || d.type !== 'seek') return;

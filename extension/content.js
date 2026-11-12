@@ -74,8 +74,24 @@
     if (next >= s.order.length) { shuffleOn(true); return true; }   // every song played: new order
     s.pos = next;
     if (!saveShuf(s)) { shufErr = 'storage blocked'; return false; }
-    location.assign(`/watch?v=${s.order[next]}&list=${s.list}`);
+    navTo(s.order[next], s.list);
     return true;
+  }
+  // In-page navigation (YouTube's own router, like clicking a song): a full page load loses the tab's user activation,
+  // and Firefox then blocks the new page from autoplaying. Full load only if the router did not move within 3 s.
+  function navTo(videoId, list) {
+    lastNavTarget = videoId;
+    window.postMessage({ src: 'lotg-cmd', type: 'nav', videoId, list }, location.origin);
+    setTimeout(() => { if (urlParam('v') !== videoId && lastNavTarget === videoId) location.assign(`/watch?v=${videoId}&list=${list}`); }, 3000);
+  }
+  let lastNavTarget = '', endFiredFor = '';
+  // Move just BEFORE the end: at 'ended' YouTube's own playlist autoplay starts navigating too, and may win.
+  function nearEnd(v) {
+    const id = urlParam('v');
+    if (!id || endFiredFor === id || !shufActive() || !(v.duration > 5) || v.duration - v.currentTime > 0.8) return;
+    if (document.querySelector('.html5-video-player.ad-showing')) return;
+    endFiredFor = id;
+    go(1);
   }
 
   async function sendCaptions() {
@@ -325,8 +341,8 @@
     if (!v || hooked.has(v)) return;
     hooked.add(v);
     for (const n of ['play', 'pause', 'seeked', 'ratechange', 'loadedmetadata']) v.addEventListener(n, onEvt);
-    // Capture phase: runs before YouTube's own end-of-video handling moves to the playlist's next item.
-    v.addEventListener('ended', () => { if (!document.querySelector('.html5-video-player.ad-showing')) go(1); }, true);
+    v.addEventListener('timeupdate', () => nearEnd(v));
+    v.addEventListener('ended', () => nearEnd(v), true);   // backup when timeupdate came too late (same once-per-video guard)
   };
 
   // Commands ride on POST replies, so polling is the command latency: 0.5 s after a command,

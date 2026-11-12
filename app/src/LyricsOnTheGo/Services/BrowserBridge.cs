@@ -295,7 +295,9 @@ public sealed class BrowserBridge : IDisposable
         }
 
         var cmds = new List<string>();
-        if (!ping) // ping (connection test) must not consume queued commands
+        // Commands belong to the tab whose report is shown: a ping (connection test) or a shadowed paused tab must not
+        // take them, or "next"/"shuffle" would act on a background tab.
+        if (!ping && !shadowed)
             lock (_cmdLock) { cmds.AddRange(_commands); _commands.Clear(); }
         Reply(res, 200, JsonSerializer.Serialize(new { commands = cmds }), origin);
         if (cmds.Count > 0) Info("cmd delivered n=" + cmds.Count);
@@ -311,14 +313,23 @@ public sealed class BrowserBridge : IDisposable
             SHA256.HashData(Encoding.UTF8.GetBytes(provided)));
     }
 
-    /// <summary>Reads at most MaxBody bytes; null when the real body exceeds it.</summary>
+    /// <summary>Reads at most <paramref name="max"/> bytes; null when the real body exceeds it. Memory follows the actual
+    /// body size (a pooled 16 KB chunk), not the cap: a full-cap buffer per captions POST was 256 KB of large-object garbage.</summary>
     private static async Task<byte[]?> ReadBody(Stream s, int max, CancellationToken ct)
     {
-        var buf = new byte[max + 1];
-        int n = 0, r;
-        while (n < buf.Length && (r = await s.ReadAsync(buf.AsMemory(n), ct).ConfigureAwait(false)) > 0)
-            n += r;
-        return n > max ? null : buf.AsSpan(0, n).ToArray();
+        var chunk = System.Buffers.ArrayPool<byte>.Shared.Rent(16 * 1024);
+        try
+        {
+            using var ms = new MemoryStream();
+            int r;
+            while ((r = await s.ReadAsync(chunk.AsMemory(), ct).ConfigureAwait(false)) > 0)
+            {
+                if (ms.Length + r > max) return null;
+                ms.Write(chunk, 0, r);
+            }
+            return ms.ToArray();
+        }
+        finally { System.Buffers.ArrayPool<byte>.Shared.Return(chunk); }
     }
 
     private static readonly HashSet<string> CaptionStatuses = new() { "ok", "none", "empty", "error" };

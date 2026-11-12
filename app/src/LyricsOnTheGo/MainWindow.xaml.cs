@@ -1520,8 +1520,7 @@ public partial class MainWindow : Window
     {
         string s = _bridge?.Latest is { } b && b.VideoId == _lastNp.VideoId && _lastNp.VideoId.Length > 0 ? b.Shuffle ?? "" : "";
         ShuffleButton.Visibility = s.Length > 0 ? Visibility.Visible : Visibility.Collapsed;
-        ShuffleButton.Opacity = s == "on" ? 1.0 : 0.45;
-        ShuffleButton.Content = s == "busy" ? "…" : "셔플";
+        ShuffleButton.Opacity = s switch { "on" => 1.0, "busy" => 0.2, _ => 0.45 };   // bright = on, faint = reading the list
         ShuffleButton.ToolTip = s switch
         {
             "on" => "재생목록 전체를 한 번씩 섞어 재생 중 - 눌러서 끄기",

@@ -27,7 +27,7 @@ function Button {
     $win.FindFirst('Descendants', (New-Object Windows.Automation.PropertyCondition([Windows.Automation.AutomationElement]::AutomationIdProperty, 'ShuffleButton')))
 }
 function Visible { $b = Button; $b -and -not $b.Current.IsOffscreen -and $b.Current.BoundingRectangle.Width -gt 0 }
-function Press { ((Button).GetCurrentPattern([Windows.Automation.InvokePattern]::Pattern)).Invoke() }
+function Press { ((Button).GetCurrentPattern([Windows.Automation.InvokePattern]::Pattern)).Invoke(); Start-Sleep -Milliseconds 700 }   # Invoke is handled asynchronously by the UI thread
 
 [void](Report $null); Start-Sleep 1
 Check 'old extension (no shuffle field) -> no button' (-not (Visible))
@@ -47,6 +47,15 @@ Check 'press while reading the list -> nothing sent' (@($c).Count -eq 0) ($c -jo
 Check 'oversized shuffle value is ignored (no button)' (-not (Visible))
 [void](Report ''); Start-Sleep 1
 Check 'left the playlist -> button hidden again' (-not (Visible))
+
+# commands go to the tab that is shown, never to a paused background tab reporting another video
+[void](Report 'off'); Start-Sleep 1
+Press
+$bg = @{ videoId = 'bgtab000001'; title = 'Background'; channel = 'Ch'; durationMs = 200000; positionMs = 1000; paused = $true; isAd = $false; isMusic = $true; sentAtMs = 1; shuffle = 'off' }
+$c = (Invoke-RestMethod 'http://127.0.0.1:47831/v1/now-playing' -Method POST -Headers $h -ContentType 'application/json' -Body ($bg | ConvertTo-Json -Compress)).commands
+Check 'paused background tab does not take the command' (@($c).Count -eq 0) ($c -join ',')
+$c = Report 'off'
+Check 'the shown tab gets it on its next report' (@($c) -contains 'shuffle:on') ($c -join ',')
 
 Write-Host ($(if ($fails -eq 0) { 'ALL PASS' } else { "$fails FAILED" }))
 exit $fails

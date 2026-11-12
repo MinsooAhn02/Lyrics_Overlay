@@ -332,8 +332,15 @@
                             Click="OnSeekForward" Content="+5" FontSize="11" ToolTip="+5s" />
                     <Button x:Name="CaptionButton" Style="{StaticResource HeaderButton}" Width="26" Height="24" FontSize="10"
                             FontWeight="Bold" Click="OnToggleCaptions" Content="CC" Visibility="Collapsed" />
-                    <Button x:Name="ShuffleButton" Style="{StaticResource HeaderButton}" Width="32" Height="24" FontSize="10"
-                            FontWeight="Bold" Click="OnToggleShuffle" Content="셔플" Visibility="Collapsed" />
+                    <Button x:Name="ShuffleButton" Style="{StaticResource HeaderButton}" Click="OnToggleShuffle" Visibility="Collapsed">
+                        <Viewbox Width="14" Height="14">
+                            <Canvas Width="24" Height="24">
+                                <Path Stroke="White" StrokeThickness="2" StrokeLineJoin="Round"
+                                      StrokeStartLineCap="Round" StrokeEndLineCap="Round"
+                                      Data="M2 18 H3.4 C4.7 18 5.9 17.4 6.7 16.3 L12.8 7.7 C13.5 6.6 14.8 6 16.1 6 H22 M18 2 L22 6 18 10 M2 6 H3.9 C5.4 6 6.8 6.9 7.5 8.2 M22 18 H16.1 C14.8 18 13.5 17.3 12.8 16.2 L12.3 15.4 M18 14 L22 18 18 22" />
+                            </Canvas>
+                        </Viewbox>
+                    </Button>
                 </StackPanel>
             </StackPanel>
         </Border>

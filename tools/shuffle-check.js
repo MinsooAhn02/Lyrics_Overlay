@@ -8,8 +8,9 @@ const check = (name, ok, extra = '') => { console.log(`${ok ? 'PASS' : 'FAIL'} $
 const tickAsync = () => new Promise((r) => setImmediate(r));
 
 // ids: what the page's playlist reader answers ({ids} or {error}); null = never answers
-function boot({ url = '/watch?v=AAAAAAAAA00&list=PLtestlist001', host = 'www.youtube.com', reply = null, storage = true } = {}) {
-  const sent = [], posted = [], assigned = [];
+// router: YouTube's in-page router follows our 'nav' message (false = it ignores it -> full-load fallback after 3 s)
+function boot({ url = '/watch?v=AAAAAAAAA00&list=PLtestlist001', host = 'www.youtube.com', reply = null, storage = true, router = true } = {}) {
+  const sent = [], posted = [], assigned = [], fullLoads = [], timers = [];
   let onMessage = null, onCmd = null;
   const listeners = {};
   const video = { duration: 200, currentTime: 50, paused: false, addEventListener: (t, f) => { (listeners[t] ??= []).push(f); } };
@@ -17,14 +18,14 @@ function boot({ url = '/watch?v=AAAAAAAAA00&list=PLtestlist001', host = 'www.you
     hostname: host, origin: 'https://' + host, pathname: '/watch',
     get search() { return url.slice(url.indexOf('?')); },
     get href() { return loc.origin + url; },
-    assign: (u) => { assigned.push(u); url = u; },
+    assign: (u) => { fullLoads.push(u); assigned.push(u); url = u; },
   };
   const store = new Map();
   const ss = storage ? { getItem: (k) => store.get(k) ?? null, setItem: (k, v) => store.set(k, String(v)), removeItem: (k) => store.delete(k) }
                      : { getItem: () => null, setItem: () => { throw new Error('denied'); }, removeItem: () => {} };
   const win = {
     addEventListener: (t, f) => { if (t === 'message') onMessage = f; },
-    postMessage: (d) => { posted.push(d); if (d.type === 'playlist' && reply) setImmediate(() => onMessage({ source: win, origin: loc.origin, data: { src: 'lotg-list', req: d.req, list: d.list, ...reply } })); },
+    postMessage: (d) => { posted.push(d); if (d.type === 'nav' && router) { url = `/watch?v=${d.videoId}&list=${d.list}`; assigned.push(url); } if (d.type === 'playlist' && reply) setImmediate(() => onMessage({ source: win, origin: loc.origin, data: { src: 'lotg-list', req: d.req, list: d.list, ...reply } })); },
   };
   win.window = win;
   const doc = { title: 'Song - YouTube', querySelector: (s) => (s.includes('video') && !s.includes('ad-showing') ? video : null) };
@@ -33,18 +34,21 @@ function boot({ url = '/watch?v=AAAAAAAAA00&list=PLtestlist001', host = 'www.you
   };
   delete globalThis.browser;
   let tick = null;
-  new Function('window', 'location', 'document', 'setInterval', 'sessionStorage', ext('content.js'))(win, loc, doc, (f) => { tick = f; return 1; }, ss);
+  new Function('window', 'location', 'document', 'setInterval', 'sessionStorage', 'setTimeout', 'clearTimeout', ext('content.js'))(win, loc, doc, (f) => { tick = f; return 1; }, ss, (f, ms) => timers.push({ f, ms }), () => {});
   onMessage({ source: win, origin: loc.origin, data: { src: 'lotg-main', videoId: new URLSearchParams(loc.search).get('v'), title: 'Song', author: 'Ch', lengthSeconds: 200, category: 'Music' } });
   return {
-    sent, posted, assigned, store, video,
+    sent, posted, assigned, fullLoads, store, video,
+    runTimers: (ms) => { for (const t of timers.splice(0).filter((x) => x.ms === ms)) t.f(); },
+    nearEnd: async () => { e_video_end(video); for (const f of listeners.timeupdate || []) f(); for (let i = 0; i < 3; i++) await tickAsync(); },
     cmd: async (c) => { onCmd({ type: 'commands', commands: [c] }); for (let i = 0; i < 5; i++) await tickAsync(); },
     tick: async () => { tick(); await tickAsync(); },
-    ended: async () => { for (const f of listeners.ended || []) f(); for (let i = 0; i < 3; i++) await tickAsync(); },
+    ended: async () => { e_video_end(video); for (const f of listeners.ended || []) f(); for (let i = 0; i < 3; i++) await tickAsync(); },
     state: () => (sent.length ? sent.at(-1).shuffle : undefined),
     // a "new page": same tab storage, the url we moved to
     reload: () => url,
   };
 }
+function e_video_end(v) { v.currentTime = v.duration - 0.3; }
 const ids = (n) => Array.from({ length: n }, (_, i) => 'AAAAAAAAA' + String(i).padStart(2, '0'));
 
 (async () => {
@@ -78,6 +82,31 @@ const ids = (n) => Array.from({ length: n }, (_, i) => 'AAAAAAAAA' + String(i).p
   const before = e.assigned.length;
   await e.cmd('prev'); await e.cmd('prev');
   check('prev at the start restarts the song instead of leaving', e.assigned.length === before + 1 && e.video.currentTime === 0, `moves=${e.assigned.length - before}`);
+
+  // 3b. moves go through YouTube's router (keeps autoplay allowed); full load only when the router did not move
+  e = boot({ reply: { ids: ids(10) } }); await e.tick(); await e.cmd('shuffle:on'); await e.cmd('next');
+  check('next uses the in-page router, no full page load', e.posted.some((p) => p.type === 'nav') && e.fullLoads.length === 0);
+  e.runTimers(3000);
+  check('router moved -> no fallback load after 3 s', e.fullLoads.length === 0);
+  e = boot({ reply: { ids: ids(10) }, router: false }); await e.tick(); await e.cmd('shuffle:on'); await e.cmd('next');
+  const want = JSON.parse(e.store.get('lotg-shuffle')).order[1];
+  check('router ignored -> nothing yet', e.fullLoads.length === 0);
+  e.runTimers(3000);
+  check('router ignored -> full page load to the same song after 3 s', e.fullLoads.at(-1) === `/watch?v=${want}&list=PLtestlist001`, e.fullLoads.at(-1));
+  // 3c. moving just before the end (YouTube's own autoplay starts AT the end), once per song
+  e = boot({ reply: { ids: ids(10) } }); await e.tick(); await e.cmd('shuffle:on');
+  await e.nearEnd();
+  check('0.3 s before the end -> moved to the next shuffled song', e.assigned.length === 1, `moves=${e.assigned.length}`);
+  // same song still at its end (url not changed yet): repeated timeupdate/ended must not skip a second song
+  e = boot({ reply: { ids: ids(10) }, router: false }); await e.tick(); await e.cmd('shuffle:on');
+  await e.nearEnd(); await e.nearEnd(); await e.ended();
+  check('repeated end events of one song -> one move only', e.posted.filter((p) => p.type === 'nav').length === 1, `navs=${e.posted.filter((p) => p.type === 'nav').length}`);
+  e = boot({ reply: { ids: ids(10) } }); await e.tick(); await e.cmd('shuffle:on');
+  e.video.currentTime = 100;
+  check('mid-song -> no move', e.assigned.length === 0);
+  e = boot({ reply: { ids: ids(10) } }); await e.tick();
+  await e.nearEnd();
+  check('shuffle off -> the end does nothing (YouTube decides)', e.assigned.length === 0);
 
   // 4. a full round: after the last song a NEW order starts (list read again)
   e = boot({ reply: { ids: ids(3) } }); await e.cmd('shuffle:on');

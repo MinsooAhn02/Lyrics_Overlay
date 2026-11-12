@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="app/lyricsonthego.png" width="96" alt="">
+  <img src="extension/icons/icon128.png" width="96" alt="">
 </p>
 
 <h1 align="center">Lyrics Overlay</h1>

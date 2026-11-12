@@ -29,12 +29,17 @@
 
 ## 빠른 시작 (빌드 없이 쓰기)
 
-1. [Releases](https://github.com/MinsooAhn02/Lyrics_Overlay/releases/latest)에서 `LyricsOverlay-win-x64.zip`을 받아 원하는 폴더에 풉니다. .NET을 따로 설치할 필요가 없습니다(약 180MB).
-2. `LyricsOnTheGo.exe`를 실행합니다. 서명되지 않은 프로그램이라 Windows SmartScreen 경고가 뜰 수 있습니다. **추가 정보 → 실행**을 누르세요.
-3. 같은 Releases에서 Firefox용 `.xpi`를 받아 Firefox 창에 끌어다 놓고 **추가**합니다. (Chrome은 아래 "확장 설치 → Chrome" 참고)
-4. 앱 설정의 **토큰**을 복사해 확장 팝업에 붙여넣고 **저장** → **연결 테스트**. 배지가 `ON`이면 유튜브에서 노래를 재생하세요.
+앱과 브라우저 확장이 **둘 다** 필요합니다. 확장은 재생 정보를 내 PC의 앱으로 보내는 역할만 하고, 가사 창은 앱이 띄웁니다.
 
-확장은 재생 정보를 내 PC의 앱으로 보내는 역할만 하므로, **앱과 확장이 모두 있어야** 동작합니다. 확장 팝업의 "앱 다운로드" 링크는 위 Releases 페이지로 연결됩니다.
+1. [Releases](https://github.com/MinsooAhn02/Lyrics_Overlay/releases/latest)에서 `LyricsOverlay-win-x64.zip`을 받아 풉니다. 안의 `LyricsOverlay.exe`를 더블클릭하면 실행됩니다. 설치도, .NET 설치도 필요 없습니다(약 70MB).
+   - 서명되지 않은 프로그램이라 Windows SmartScreen 경고가 뜰 수 있습니다. **추가 정보 → 실행**을 누르세요.
+   - 처음 실행은 5초쯤 걸립니다.
+2. 같은 Releases에서 브라우저용 확장을 받습니다.
+   - **Chrome**: `lyrics-overlay-bridge-chrome.zip`을 풀고 `chrome://extensions` → **개발자 모드** → **압축해제된 확장 프로그램을 로드합니다** → 푼 폴더 선택. (Chrome은 개발자 모드 확장을 켤 때마다 경고를 보여 줍니다.)
+   - **Firefox**: `.xpi` 파일을 Firefox 창에 끌어다 놓고 **추가**. (서명본은 준비되는 대로 Releases에 추가됩니다. 그전에는 아래 "Firefox" 절차의 임시 로드를 쓰세요.)
+3. 앱 설정의 **토큰**을 복사해 확장 팝업에 붙여넣고 **저장** → **연결 테스트**. 배지가 `ON`이면 유튜브에서 노래를 재생하세요.
+
+확장 팝업의 "앱 다운로드" 링크는 위 Releases 페이지로 연결됩니다.
 
 ## 요구 사항
 

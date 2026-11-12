@@ -41,6 +41,16 @@
 
 확장 팝업의 "앱 다운로드" 링크는 위 Releases 페이지로 연결됩니다.
 
+### 앱 켜고 끄기
+
+- 가사 창의 **X는 종료가 아니라 트레이로 숨기기**입니다. 앱은 계속 실행 중입니다.
+- 확장 팝업의 **앱 끄기**로 종료할 수 있습니다(트레이 아이콘 우클릭 → 종료도 같습니다).
+- 확장 팝업의 **앱 켜기**로 다시 켤 수 있습니다. 앱을 **한 번은 직접 실행**해야 합니다. 그때 앱이 브라우저의 "네이티브 메시징" 도우미로 자신을 등록하기 때문입니다.
+  - 등록은 현재 Windows 사용자 계정만 건드립니다(관리자 권한 불필요): `HKCU\Software\Google\Chrome`, `HKCU\Software\Microsoft\Edge`, `HKCU\Software\Mozilla` 아래 `NativeMessagingHosts\com.lyricsoverlay.host` 값과, `%LOCALAPPDATA%\LyricsOnTheGo\native-host\`의 파일 2개.
+  - 이 도우미는 "앱이 실행 중인지 확인"과 "앱 시작"만 할 수 있고, 우리 확장 외에는 호출할 수 없습니다.
+  - 등록을 지우려면 `LyricsOverlay.exe --unregister-native-host`를 실행하세요. (이후 앱을 다시 실행하면 다시 등록됩니다.)
+- 앱은 한 번에 하나만 실행됩니다. 이미 켜져 있을 때 다시 실행해도 두 번째 창이 생기지 않습니다.
+
 ## 요구 사항
 
 - Windows 10 이상

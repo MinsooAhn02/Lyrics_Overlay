@@ -128,8 +128,19 @@
     const t = stripDecor(title);
     let best = -1, sep = '';
     for (const sp of SEPS) { const i = t.indexOf(sp); if (i > 0 && (best < 0 || i < best)) { best = i; sep = sp; } }
-    if (best < 0) return { track: t, artist: '', album: '' }; // no separator: artist unknown
+    if (best < 0) {
+      // K-pop style "Artist (별명) 'Song' Official MV" / “Song” / 「Song」: the quoted part is the song, what precedes it the
+      // artist (a trailing (alias) dropped). Without quotes the artist stays unknown.
+      const q = /^(.+?)\s*[‘'"“「『]([^‘’'"“”「」『』]{1,120})[’'"”」』]/.exec(t);
+      if (q) {
+        const artist = clean(q[1].replace(/\s*[(\[][^()\[\]]*[)\]]\s*$/, ''), 200);
+        if (artist) return { track: clean(q[2], 300), artist, album: '' };
+      }
+      return { track: t, artist: '', album: '' };
+    }
     let artist = clean(t.slice(0, best), 200), track = clean(t.slice(best + sep.length), 300);
+    const unq = /^[‘'"“「『](.+)[’'"”」』]$/.exec(track);   // "Artist - 'Song'"
+    if (unq) track = clean(unq[1], 300);
     if (!artist || !track) return { track: '', artist: '', album: '' };
     // "Title - Artist/Series" when the channel name is the right-hand part (equal, or one contains the other): swap.
     // "Artist - Title" (left part related to the channel) stays as is.

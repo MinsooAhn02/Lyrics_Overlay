@@ -176,7 +176,7 @@ public static class DiagLog
 
     private static void MirrorToFile(string track, string provider, DiagResult result, string detail)
     {
-        if (provider is not ("youtube-captions" or "aligned" or "mix") && track != "bridge") return;
+        if (provider is not ("youtube-captions" or "aligned" or "mix" or "deliver" or "lookup" or "lrclib") && track != "bridge") return;
         try
         {
             string t = track.Length > 60 ? track[..60] : track;

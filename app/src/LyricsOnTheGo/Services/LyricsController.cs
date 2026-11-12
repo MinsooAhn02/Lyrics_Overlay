@@ -111,6 +111,8 @@ public sealed class LyricsController
         }
 
         _currentKey = key;
+        DiagLog.LogCompleted(LyricsAggregator.Track(np.Title, np.Artist), "lookup", DiagResult.Plain,
+            $"[{np.VideoId}|dur {np.DurationMs / 1000:0}s] structured={np.Structured} meta={np.MetaSource} browser={np.IsBrowser}", 0, false);
         if (_captionVideo != np.VideoId)
             _captionVideo = "";
         _mixVideo = "";   // every new lookup may try the track list again (a cancelled attempt must not block it)
@@ -285,10 +287,12 @@ public sealed class LyricsController
     /// The maths run on a worker thread; the delivery is posted back to the UI thread.</summary>
     private bool TryAlign(NowPlaying np, LyricsResult reference, CaptionsInfo? info, CancellationToken ct)
     {
-        if (info is null || info.AsrWords.Count < 8 || reference.Instrumental || string.IsNullOrWhiteSpace(reference.Synced))
+        bool plainRef = string.IsNullOrWhiteSpace(reference.Synced);   // untimed lyrics: sync them on the captions instead
+        if (info is null || info.AsrWords.Count < 8 || reference.Instrumental
+            || (plainRef && string.IsNullOrWhiteSpace(reference.Plain)))
             return false;   // nothing to try: stay silent
         string track = LyricsAggregator.Track(np.Title, np.Artist);
-        var refLines = LrcParser.Parse(reference.Synced);
+        var refLines = plainRef ? LyricAligner.FromPlain(reference.Plain, np.DurationMs) : LrcParser.Parse(reference.Synced);
         var r = LyricAligner.Align(refLines, info.AsrWords, out string reason);
         if (r is null)
         {
@@ -296,12 +300,13 @@ public sealed class LyricsController
             return false;
         }
         double shift = LyricAligner.MeanShiftMs(refLines, r.Synced);
-        if (shift < MinShiftMs)
+        if (!plainRef && shift < MinShiftMs)
         {
             DiagLog.LogCompleted(track, LyricAligner.SourceName, DiagResult.NotFound, $"kept original timing (mean shift {shift / 1000:0.0}s)", 0, false);
             return false;
         }
-        DiagLog.LogCompleted(track, LyricAligner.SourceName, DiagResult.Synced, $"{r.Detail}, mean shift {shift / 1000:0.0}s", 0, chosen: true);
+        DiagLog.LogCompleted(track, LyricAligner.SourceName, DiagResult.Synced,
+            plainRef ? $"{r.Detail}, synced from plain lyrics" : $"{r.Detail}, mean shift {shift / 1000:0.0}s", 0, chosen: true);
         PostToUi(() =>
         {
             if (ct.IsCancellationRequested || _np?.VideoId != np.VideoId || CaptionHub.IsRejected(np.VideoId)) return;   // moved on / switched off meanwhile
@@ -401,6 +406,8 @@ public sealed class LyricsController
     /// <summary>Translates a fetched result into a <see cref="LyricsState"/> and raises it, parsing synced LRC into lines.</summary>
     private void Deliver(LyricsResult result)
     {
+        DiagLog.LogCompleted(_np is { } d ? LyricsAggregator.Track(d.Title, d.Artist) : "", "deliver", DiagResult.Plain,
+            $"[{_np?.VideoId}] instrumental={result.Instrumental} synced={!string.IsNullOrWhiteSpace(result.Synced)} plain={!string.IsNullOrWhiteSpace(result.Plain)} source={result.Source}", 0, false);
         if (result.Instrumental)
         {
             Raise(new LyricsState(LyricsKind.Instrumental));

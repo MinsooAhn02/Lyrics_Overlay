@@ -147,6 +147,30 @@ public static class LyricAligner
         };
     }
 
+    /// <summary>Untimed (plain) lyrics as reference lines with pseudo times spread over the song by text length. The times
+    /// only order the lines and place the unmatched ones between anchors; <see cref="Align"/> replaces them where it finds the line.</summary>
+    public static List<LyricLine> FromPlain(string plain, double durationMs)
+    {
+        var texts = new List<string>();
+        double total = 0;
+        foreach (var raw in plain.Split('\n'))
+        {
+            string t = raw.Trim();
+            if (t.Length == 0) continue;
+            texts.Add(t);
+            total += t.Length;
+        }
+        double span = durationMs > 0 ? durationMs * 0.9 : texts.Count * 3000.0;
+        var lines = new List<LyricLine>(texts.Count);
+        double cum = 0;
+        foreach (var t in texts)
+        {
+            lines.Add(new LyricLine(span * cum / Math.Max(1, total), t));
+            cum += t.Length;
+        }
+        return lines;
+    }
+
     /// <summary>Mean |aligned - original| start time in ms (aligned lines keep the reference order and count).</summary>
     public static double MeanShiftMs(IReadOnlyList<LyricLine> reference, string alignedLrc)
     {

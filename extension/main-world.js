@@ -125,7 +125,10 @@
     const d = typeof vd?.shortDescription === 'string' ? vd.shortDescription : '';
     if (Number(vd?.lengthSeconds) >= 600 && (d.match(/\d{1,2}:\d{2}/g) || []).length >= 3) out.desc = d.slice(0, 6000);
     const cat = pr?.microformat?.playerMicroformatRenderer?.category;
-    if (location.hostname !== 'music.youtube.com' && cat && cat !== 'Music') { // the app ignores non-music anyway: do not touch the player
+    const NON_MUSIC = /^(Gaming|News & Politics|Education|Howto & Style|Science & Technology|Sports|Autos & Vehicles|Pets & Animals|Travel & Events|Nonprofits & Activism)$/;
+    const sec = Number(vd?.lengthSeconds) || 0;
+    const musicLike = !cat || cat === 'Music' || (!NON_MUSIC.test(cat) && ((sec > 0 && sec <= 720) || (d.match(/\d{1,2}:\d{2}/g) || []).length >= 3)); // keep in sync with content.js
+    if (location.hostname !== 'music.youtube.com' && !musicLike) { // the app ignores non-music anyway: do not touch the player
       if (capVideo === vid) window.postMessage(out, location.origin);
       return;
     }

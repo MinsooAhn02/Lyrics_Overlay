@@ -152,6 +152,11 @@
     return empty;
   }
 
+  // Independent uploads are often filed under People & Blogs / Entertainment, so "category != Music" alone must not skip
+  // a song. Clearly non-music categories always skip; the ambiguous ones count as music up to 12 minutes.
+  const NON_MUSIC = /^(Gaming|News & Politics|Education|Howto & Style|Science & Technology|Sports|Autos & Vehicles|Pets & Animals|Travel & Events|Nonprofits & Activism)$/;
+  const musicLike = (cat, sec, hasList) => !!(!cat || cat === 'Music' || (!NON_MUSIC.test(cat) && ((sec > 0 && sec <= 720) || hasList))); // hasList: mix with a timestamped track list
+
   function snapshot() {
     const v = getVideo();
     if (!v || location.pathname.startsWith('/shorts/')) return null;
@@ -174,7 +179,7 @@
       positionMs: Math.max(0, Math.round(v.currentTime * 1000)),
       paused: v.paused,
       isAd: !!document.querySelector('.html5-video-player.ad-showing'),
-      isMusic: IS_MUSIC_HOST || category === null || category === 'Music',
+      isMusic: IS_MUSIC_HOST || musicLike(category, dur, sameVideo && (String(main.desc || '').match(/\d{1,2}:\d{2}/g) || []).length >= 3),
       sentAtMs: Date.now(),
     };
   }

@@ -1,0 +1,22 @@
+// Run: node tools\music-check.js — checks the "is this video music?" rule used by the extension (content.js).
+const fs = require('fs'), path = require('path');
+const src = fs.readFileSync(path.join(__dirname, '..', 'extension', 'content.js'), 'utf8');
+const a = src.indexOf('const NON_MUSIC'), b = src.indexOf('function snapshot');
+const m = { exports: {} };
+new Function('module', src.slice(a, b) + '\nmodule.exports = { musicLike };')(m);
+const { musicLike } = m.exports;
+let fails = 0;
+const t = (name, got, want) => { const ok = got === want; if (!ok) fails++; console.log((ok ? 'PASS ' : 'FAIL ') + name + ' -> ' + got); };
+t('Music category', musicLike('Music', 200), true);
+t('unknown category (not loaded yet)', musicLike(null, 200), true);
+t('indie song filed under People & Blogs, 3 min', musicLike('People & Blogs', 205), true);
+t('song under Entertainment, 4 min', musicLike('Entertainment', 240), true);
+t('song under Film & Animation (MV), 4 min', musicLike('Film & Animation', 240), true);
+t('long People & Blogs vlog, 40 min', musicLike('People & Blogs', 2400), false);
+t('Gaming video, 3 min', musicLike('Gaming', 180), false);
+t('Education, 5 min', musicLike('Education', 300), false);
+t('News, 2 min', musicLike('News & Politics', 120), false);
+t('Entertainment with unknown length', musicLike('Entertainment', 0), false);
+t('long People & Blogs mix WITH a track list', musicLike('People & Blogs', 2400, true), true);
+t('long Gaming video even with timestamps', musicLike('Gaming', 2400, true), false);
+console.log(fails ? fails + ' FAILED' : 'ALL PASS'); process.exit(fails);

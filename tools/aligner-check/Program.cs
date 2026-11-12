@@ -147,6 +147,19 @@ List<double> LrcParser2(string lrc) => lrc.Split('\n', StringSplitOptions.Remove
     var (mean, max) = res == null ? (999999, 999999) : Err(res, r, f);
     Check("timeline jump (cut verse) followed", res != null && mean < 2500, $"mean={mean:0} max={max:0} {why}");
 }
+// 15. plain (untimed) lyrics get timed from the captions: far better than the even-spread guess
+{
+    var timed = MakeRef(en, 24);                                    // the cover's real schedule is timed + 6 s, uneven
+    var plain = string.Join("\n", timed.Select(l => l.Text));
+    Func<double, double> real = t => 6000 + (t - 10000) * 0.9 + 10000 + (t > 40000 ? 8000 : 0);
+    var pseudo = LyricAligner.FromPlain(plain, 200000);
+    var res = LyricAligner.Align(pseudo, MakeAsr(timed, real, 0.15, null, 200, 0.1), out var why);
+    var got = res == null ? new List<double>() : LrcParser2(res.Synced);
+    double mean = got.Count == timed.Count ? got.Select((g, i) => Math.Abs(g - real(timed[i].TimeMs))).Average() : 999999;
+    double guess = pseudo.Select((l, i) => Math.Abs(l.TimeMs - real(timed[i].TimeMs))).Average();
+    Check("plain lyrics synced on captions", res != null && mean < 1500 && mean < guess / 3, $"aligned mean={mean:0} even-spread mean={guess:0} {why}");
+    Check("FromPlain skips blank lines, keeps order", LyricAligner.FromPlain("a\n\n  b  \n", 100000) is { Count: 2 } f && f[0].Text == "a" && f[1].Text == "b" && f[0].TimeMs < f[1].TimeMs);
+}
 // 9. output order equals reference order and line count is preserved
 {
     var r = MakeRef(en, 24); Func<double, double> f = t => t + 1500;

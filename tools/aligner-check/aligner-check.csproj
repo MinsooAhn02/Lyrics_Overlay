@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="..\..\app\src\LyricsOnTheGo\Services\LyricAligner.cs" />
+    <Compile Include="..\..\app\src\LyricsOnTheGo\Models\LyricLine.cs" />
+    <Compile Include="..\..\app\src\LyricsOnTheGo\Services\LrcParser.cs" />
+    <Compile Include="..\..\app\src\LyricsOnTheGo\Models\LyricsResult.cs" />
+  </ItemGroup>
+</Project>

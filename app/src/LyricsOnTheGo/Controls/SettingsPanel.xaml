@@ -1,0 +1,770 @@
+﻿<UserControl x:Class="LyricsOnTheGo.Controls.SettingsPanel"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="clr-namespace:LyricsOnTheGo"
+             xmlns:c="clr-namespace:LyricsOnTheGo.Controls"
+             FontFamily="Segoe UI Variable, Segoe UI"
+             TextOptions.TextFormattingMode="Display"
+             TextOptions.TextRenderingMode="ClearType">
+
+    <UserControl.Resources>
+        <c:InvertPercentConverter x:Key="InvertPct" />
+        <local:HexToBrushConverter x:Key="HexToBrush" />
+
+        <!-- Thin overlay scrollbar (matches the original: 6px, rounded white thumb, no buttons). -->
+        <Style TargetType="ScrollBar">
+            <Setter Property="Width" Value="8" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ScrollBar">
+                        <Grid Background="Transparent" Width="8">
+                            <Track x:Name="PART_Track" IsDirectionReversed="True">
+                                <Track.DecreaseRepeatButton>
+                                    <RepeatButton Command="ScrollBar.PageUpCommand" Focusable="False" IsTabStop="False">
+                                        <RepeatButton.Template>
+                                            <ControlTemplate TargetType="RepeatButton">
+                                                <Border Background="Transparent" />
+                                            </ControlTemplate>
+                                        </RepeatButton.Template>
+                                    </RepeatButton>
+                                </Track.DecreaseRepeatButton>
+                                <Track.Thumb>
+                                    <Thumb>
+                                        <Thumb.Template>
+                                            <ControlTemplate TargetType="Thumb">
+                                                <Border Width="6" CornerRadius="3" HorizontalAlignment="Center"
+                                                        Background="#33FFFFFF" />
+                                            </ControlTemplate>
+                                        </Thumb.Template>
+                                    </Thumb>
+                                </Track.Thumb>
+                                <Track.IncreaseRepeatButton>
+                                    <RepeatButton Command="ScrollBar.PageDownCommand" Focusable="False" IsTabStop="False">
+                                        <RepeatButton.Template>
+                                            <ControlTemplate TargetType="RepeatButton">
+                                                <Border Background="Transparent" />
+                                            </ControlTemplate>
+                                        </RepeatButton.Template>
+                                    </RepeatButton>
+                                </Track.IncreaseRepeatButton>
+                            </Track>
+                        </Grid>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Lucide-style stroke icon path. -->
+        <Style x:Key="IconPath" TargetType="Path">
+            <Setter Property="Stroke" Value="White" />
+            <Setter Property="StrokeThickness" Value="2" />
+            <Setter Property="StrokeStartLineCap" Value="Round" />
+            <Setter Property="StrokeEndLineCap" Value="Round" />
+            <Setter Property="StrokeLineJoin" Value="Round" />
+            <Setter Property="Fill" Value="{x:Null}" />
+        </Style>
+
+        <!-- Toggle switch (40x22 pill) with an animated thumb slide + track colour crossfade. -->
+        <Style x:Key="ToggleSwitch" TargetType="CheckBox">
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="CheckBox">
+                        <Border x:Name="track" Width="40" Height="22" CornerRadius="11">
+                            <Border.Background>
+                                <SolidColorBrush x:Name="trackBrush" Color="#2EFFFFFF" />
+                            </Border.Background>
+                            <Ellipse x:Name="thumb" Width="16" Height="16" Fill="White"
+                                     HorizontalAlignment="Left" Margin="3,0,0,0" RenderTransformOrigin="0.5,0.5">
+                                <Ellipse.RenderTransform>
+                                    <TranslateTransform x:Name="thumbT" X="0" />
+                                </Ellipse.RenderTransform>
+                            </Ellipse>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Trigger.EnterActions>
+                                    <BeginStoryboard>
+                                        <Storyboard>
+                                            <DoubleAnimation Storyboard.TargetName="thumbT" Storyboard.TargetProperty="X"
+                                                             To="18" Duration="0:0:0.18">
+                                                <DoubleAnimation.EasingFunction>
+                                                    <CubicEase EasingMode="EaseOut" />
+                                                </DoubleAnimation.EasingFunction>
+                                            </DoubleAnimation>
+                                            <ColorAnimation Storyboard.TargetName="trackBrush" Storyboard.TargetProperty="Color"
+                                                            To="#17D346" Duration="0:0:0.18" />
+                                        </Storyboard>
+                                    </BeginStoryboard>
+                                </Trigger.EnterActions>
+                                <Trigger.ExitActions>
+                                    <BeginStoryboard>
+                                        <Storyboard>
+                                            <DoubleAnimation Storyboard.TargetName="thumbT" Storyboard.TargetProperty="X"
+                                                             To="0" Duration="0:0:0.18">
+                                                <DoubleAnimation.EasingFunction>
+                                                    <CubicEase EasingMode="EaseOut" />
+                                                </DoubleAnimation.EasingFunction>
+                                            </DoubleAnimation>
+                                            <ColorAnimation Storyboard.TargetName="trackBrush" Storyboard.TargetProperty="Color"
+                                                            To="#2EFFFFFF" Duration="0:0:0.18" />
+                                        </Storyboard>
+                                    </BeginStoryboard>
+                                </Trigger.ExitActions>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Range slider: thin track, accent round thumb with dark border + accent ring. -->
+        <Style x:Key="SettingSlider" TargetType="Slider">
+            <Setter Property="OverridesDefaultStyle" Value="True" />
+            <Setter Property="Height" Value="18" />
+            <Setter Property="MinHeight" Value="18" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+            <!-- Click anywhere on the track to jump the thumb there AND keep dragging from that
+                 point if the button stays held (handled in OnSliderTrackPress). -->
+            <EventSetter Event="PreviewMouseLeftButtonDown" Handler="OnSliderTrackPress" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Slider">
+                        <Grid VerticalAlignment="Center">
+                            <Border Height="4" CornerRadius="2" Background="#29FFFFFF" />
+                            <Track x:Name="PART_Track">
+                                <Track.DecreaseRepeatButton>
+                                    <RepeatButton Focusable="False" IsTabStop="False">
+                                        <RepeatButton.Template>
+                                            <ControlTemplate TargetType="RepeatButton">
+                                                <Border Background="Transparent" />
+                                            </ControlTemplate>
+                                        </RepeatButton.Template>
+                                    </RepeatButton>
+                                </Track.DecreaseRepeatButton>
+                                <Track.IncreaseRepeatButton>
+                                    <RepeatButton Focusable="False" IsTabStop="False">
+                                        <RepeatButton.Template>
+                                            <ControlTemplate TargetType="RepeatButton">
+                                                <Border Background="Transparent" />
+                                            </ControlTemplate>
+                                        </RepeatButton.Template>
+                                    </RepeatButton>
+                                </Track.IncreaseRepeatButton>
+                                <Track.Thumb>
+                                    <Thumb Width="16" Height="16" FocusVisualStyle="{x:Null}">
+                                        <Thumb.Template>
+                                            <ControlTemplate TargetType="Thumb">
+                                                <Grid>
+                                                    <!-- 1px accent ring → 2px dark border → solid accent fill. -->
+                                                    <Ellipse Fill="#0B0B0B" />
+                                                    <Ellipse Margin="2" Fill="#17D346" />
+                                                    <Ellipse Stroke="#17D346" StrokeThickness="1" />
+                                                </Grid>
+                                            </ControlTemplate>
+                                        </Thumb.Template>
+                                    </Thumb>
+                                </Track.Thumb>
+                            </Track>
+                        </Grid>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Settings card: fills its column (two equal columns); stacked vertically with a 6px gap. -->
+        <Style x:Key="Card" TargetType="Border">
+            <Setter Property="HorizontalAlignment" Value="Stretch" />
+            <Setter Property="Margin" Value="0,0,0,2" />
+            <Setter Property="Padding" Value="14,6,14,6" />
+            <Setter Property="CornerRadius" Value="10" />
+            <Setter Property="Background" Value="#0FFFFFFF" />
+            <Setter Property="BorderBrush" Value="#14FFFFFF" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="VerticalAlignment" Value="Top" />
+        </Style>
+
+        <Style x:Key="GroupTitle" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="#17D346" />
+            <Setter Property="FontSize" Value="10.5" />
+            <Setter Property="FontWeight" Value="Bold" />
+            <Setter Property="Opacity" Value="0.9" />
+            <Setter Property="Margin" Value="0,0,0,5" />
+        </Style>
+
+        <Style x:Key="FieldLabel" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="White" />
+            <Setter Property="FontSize" Value="12.5" />
+            <Setter Property="Opacity" Value="0.9" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
+
+        <Style x:Key="ValueLabel" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="#17D346" />
+            <Setter Property="FontSize" Value="12.5" />
+            <Setter Property="FontWeight" Value="Bold" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="HorizontalAlignment" Value="Right" />
+        </Style>
+
+        <Style x:Key="Hint" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="#73FFFFFF" />
+            <Setter Property="FontSize" Value="11" />
+            <Setter Property="TextWrapping" Value="Wrap" />
+            <Setter Property="Margin" Value="0,2,0,0" />
+        </Style>
+
+        <!-- Font picker: dark combo; items preview in their own font; virtualized popup list. -->
+        <Style x:Key="FontComboItem" TargetType="ComboBoxItem">
+            <Setter Property="Foreground" Value="White" />
+            <Setter Property="Padding" Value="8,4" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ComboBoxItem">
+                        <Border x:Name="bd" Background="Transparent" CornerRadius="5" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter TextElement.Foreground="{TemplateBinding Foreground}" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsHighlighted" Value="True">
+                                <Setter TargetName="bd" Property="Background" Value="#1FFFFFFF" />
+                            </Trigger>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter Property="Foreground" Value="#17D346" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding IsHeader}" Value="True">
+                    <Setter Property="IsEnabled" Value="False" />
+                    <Setter Property="Focusable" Value="False" />
+                    <Setter Property="Foreground" Value="#73FFFFFF" />
+                    <Setter Property="Cursor" Value="Arrow" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+
+        <Style x:Key="FontCombo" TargetType="ComboBox">
+            <Setter Property="Foreground" Value="White" />
+            <Setter Property="Height" Value="26" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="MaxDropDownHeight" Value="260" />
+            <Setter Property="ItemContainerStyle" Value="{StaticResource FontComboItem}" />
+            <Setter Property="ItemsPanel">
+                <Setter.Value>
+                    <ItemsPanelTemplate>
+                        <VirtualizingStackPanel />
+                    </ItemsPanelTemplate>
+                </Setter.Value>
+            </Setter>
+            <Setter Property="ItemTemplate">
+                <Setter.Value>
+                    <DataTemplate>
+                        <TextBlock Text="{Binding Label}" FontFamily="{Binding Family}" FontSize="13"
+                                   TextTrimming="CharacterEllipsis" />
+                    </DataTemplate>
+                </Setter.Value>
+            </Setter>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ComboBox">
+                        <Grid>
+                            <ToggleButton Focusable="False" ClickMode="Press"
+                                          IsChecked="{Binding IsDropDownOpen, Mode=TwoWay, RelativeSource={RelativeSource TemplatedParent}}">
+                                <ToggleButton.Template>
+                                    <ControlTemplate TargetType="ToggleButton">
+                                        <Border Background="#12FFFFFF" BorderBrush="#24FFFFFF" BorderThickness="1" CornerRadius="7" />
+                                    </ControlTemplate>
+                                </ToggleButton.Template>
+                            </ToggleButton>
+                            <ContentPresenter IsHitTestVisible="False" Margin="10,0,26,0" VerticalAlignment="Center"
+                                              TextElement.Foreground="{TemplateBinding Foreground}"
+                                              Content="{TemplateBinding SelectionBoxItem}"
+                                              ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}" />
+                            <Path IsHitTestVisible="False" Style="{StaticResource IconPath}" Stroke="#B0FFFFFF" StrokeThickness="1.5"
+                                  Data="M1 1 L5 5 L9 1" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,10,0" />
+                            <Popup IsOpen="{TemplateBinding IsDropDownOpen}" Placement="Bottom" Focusable="False"
+                                   AllowsTransparency="True" PopupAnimation="Fade">
+                                <Border MinWidth="{Binding ActualWidth, RelativeSource={RelativeSource TemplatedParent}}"
+                                        MaxHeight="{TemplateBinding MaxDropDownHeight}" Margin="0,4,0,0" Padding="3"
+                                        Background="#1A1A1A" BorderBrush="#33FFFFFF" BorderThickness="1" CornerRadius="8">
+                                    <ScrollViewer CanContentScroll="True" HorizontalScrollBarVisibility="Disabled"
+                                                  VerticalScrollBarVisibility="Auto">
+                                        <ItemsPresenter />
+                                    </ScrollViewer>
+                                </Border>
+                            </Popup>
+                        </Grid>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="HexBox" TargetType="TextBox">
+            <Setter Property="Background" Value="#12FFFFFF" />
+            <Setter Property="Foreground" Value="White" />
+            <Setter Property="BorderBrush" Value="#24FFFFFF" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="Width" Value="74" />
+            <Setter Property="Height" Value="26" />
+            <Setter Property="FontFamily" Value="Cascadia Code, Consolas" />
+            <Setter Property="FontSize" Value="11.5" />
+            <Setter Property="CharacterCasing" Value="Upper" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+            <Setter Property="HorizontalContentAlignment" Value="Center" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="TextBox">
+                        <Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="7">
+                            <ScrollViewer x:Name="PART_ContentHost" Margin="0" VerticalAlignment="Center" />
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Segmented icon button (alignment). -->
+        <Style x:Key="SegBtn" TargetType="Button">
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Foreground" Value="#8CFFFFFF" />
+            <Setter Property="Width" Value="34" />
+            <Setter Property="Height" Value="26" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="b" CornerRadius="7">
+                            <Border.Background>
+                                <SolidColorBrush x:Name="segBrush" Color="Transparent" />
+                            </Border.Background>
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"
+                                              TextElement.Foreground="{TemplateBinding Foreground}" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter Property="Foreground" Value="#D9FFFFFF" />
+                            </Trigger>
+                            <Trigger Property="Tag" Value="selected">
+                                <Setter Property="Foreground" Value="#000000" />
+                                <Trigger.EnterActions>
+                                    <BeginStoryboard>
+                                        <Storyboard>
+                                            <ColorAnimation Storyboard.TargetName="segBrush" Storyboard.TargetProperty="Color"
+                                                            To="#17D346" Duration="0:0:0.16" />
+                                        </Storyboard>
+                                    </BeginStoryboard>
+                                </Trigger.EnterActions>
+                                <Trigger.ExitActions>
+                                    <BeginStoryboard>
+                                        <Storyboard>
+                                            <ColorAnimation Storyboard.TargetName="segBrush" Storyboard.TargetProperty="Color"
+                                                            To="Transparent" Duration="0:0:0.16" />
+                                        </Storyboard>
+                                    </BeginStoryboard>
+                                </Trigger.ExitActions>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Text segmented button (EN / KO). -->
+        <Style x:Key="LangBtn" TargetType="Button" BasedOn="{StaticResource SegBtn}">
+            <Setter Property="Width" Value="30" />
+            <Setter Property="Height" Value="22" />
+            <Setter Property="FontSize" Value="11" />
+            <Setter Property="FontWeight" Value="Bold" />
+        </Style>
+
+        <!-- Reset / clear-cache style button. -->
+        <Style x:Key="ActionBtn" TargetType="Button">
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Foreground" Value="White" />
+            <Setter Property="FontSize" Value="12.5" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="b" Background="#0DFFFFFF" BorderBrush="#29FFFFFF" BorderThickness="1"
+                                CornerRadius="9" Padding="9">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="b" Property="Background" Value="#1FFFFFFF" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Header close (x) chrome button. -->
+        <Style x:Key="ChromeBtn" TargetType="Button">
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Foreground" Value="White" />
+            <Setter Property="Opacity" Value="0.6" />
+            <Setter Property="Width" Value="28" />
+            <Setter Property="Height" Value="28" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="b" Background="Transparent" CornerRadius="8">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter Property="Opacity" Value="1" />
+                                <Setter TargetName="b" Property="Background" Value="#1FFFFFFF" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </UserControl.Resources>
+
+    <Border Background="#0B0B0B" CornerRadius="12">
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
+
+            <!-- Header (also drags the window) -->
+            <Grid Grid.Row="0" Margin="16,13,10,11" Background="#01000000" Cursor="SizeAll"
+                  MouseLeftButtonDown="OnHeaderDrag">
+                <Border Height="1" VerticalAlignment="Bottom" Background="#14FFFFFF" Margin="-16,0,-10,-11" />
+                <TextBlock x:Name="TitleText" Text="Settings" Foreground="White"
+                           FontSize="13" FontWeight="Bold" VerticalAlignment="Center" />
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+                    <Border Background="#12FFFFFF" BorderBrush="#1AFFFFFF" BorderThickness="1"
+                            CornerRadius="9" Padding="2" Margin="0,0,8,0">
+                        <StackPanel Orientation="Horizontal">
+                            <Button x:Name="LangEnBtn" Content="EN" Style="{StaticResource LangBtn}" Click="OnLangEn" />
+                            <Button x:Name="LangKoBtn" Content="KO" Style="{StaticResource LangBtn}" Click="OnLangKo" />
+                        </StackPanel>
+                    </Border>
+                    <Button x:Name="CloseBtn" Style="{StaticResource ChromeBtn}" Click="OnClose">
+                        <Viewbox Width="16" Height="16">
+                            <Canvas Width="24" Height="24">
+                                <Path Style="{StaticResource IconPath}" Data="M18 6 6 18 M6 6 18 18" />
+                            </Canvas>
+                        </Viewbox>
+                    </Button>
+                </StackPanel>
+            </Grid>
+
+            <!-- Body: two equal (50/50) columns; cards stack top-down inside each column -->
+            <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Padding="16,0,6,10">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+
+                    <!-- Left column: APPEARANCE, TEXT, SYNC, BEHAVIOR -->
+                    <StackPanel Grid.Column="0" Margin="0,0,3,0" VerticalAlignment="Top">
+
+                    <!-- APPEARANCE -->
+                    <Border Style="{StaticResource Card}"><StackPanel>
+                    <TextBlock x:Name="HdrAppearance" Text="APPEARANCE" Style="{StaticResource GroupTitle}" />
+
+                    <Grid Margin="0,3">
+                        <TextBlock x:Name="LblTextColor" Text="Text color" Style="{StaticResource FieldLabel}" />
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                            <TextBox Style="{StaticResource HexBox}"
+                                     Text="{Binding TextColor, UpdateSourceTrigger=PropertyChanged}" />
+                            <Button x:Name="TextSwatch" Width="30" Height="26" Margin="8,0,0,0" Cursor="Hand" Click="OnPickTextColor">
+                                <Button.Template>
+                                    <ControlTemplate TargetType="Button">
+                                        <Border CornerRadius="7" BorderBrush="#2EFFFFFF" BorderThickness="1"
+                                                Background="{Binding TextColor, Converter={StaticResource HexToBrush}}" />
+                                    </ControlTemplate>
+                                </Button.Template>
+                            </Button>
+                        </StackPanel>
+                    </Grid>
+
+                    <Grid Margin="0,3">
+                        <TextBlock x:Name="LblBgColor" Text="Background color" Style="{StaticResource FieldLabel}" />
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                            <TextBox Style="{StaticResource HexBox}"
+                                     Text="{Binding BgColor, UpdateSourceTrigger=PropertyChanged}" />
+                            <Button x:Name="BgSwatch" Width="30" Height="26" Margin="8,0,0,0" Cursor="Hand" Click="OnPickBgColor">
+                                <Button.Template>
+                                    <ControlTemplate TargetType="Button">
+                                        <Border CornerRadius="7" BorderBrush="#2EFFFFFF" BorderThickness="1"
+                                                Background="{Binding BgColor, Converter={StaticResource HexToBrush}}" />
+                                    </ControlTemplate>
+                                </Button.Template>
+                            </Button>
+                        </StackPanel>
+                    </Grid>
+
+                    <Grid Margin="0,5,0,0">
+                        <TextBlock x:Name="LblTextOutline" Text="Text outline" Style="{StaticResource FieldLabel}" />
+                        <CheckBox Style="{StaticResource ToggleSwitch}" HorizontalAlignment="Right" IsChecked="{Binding TextOutline}" />
+                    </Grid>
+                    </StackPanel></Border>
+
+                    <!-- TEXT (sizes, dim, alignment) -->
+                    <Border Style="{StaticResource Card}"><StackPanel>
+                    <TextBlock x:Name="HdrText" Text="TEXT" Style="{StaticResource GroupTitle}" />
+
+                    <Grid Margin="0,2,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock x:Name="LblFont" Grid.Column="0" Text="Font" Style="{StaticResource FieldLabel}" Margin="0,0,10,0" />
+                        <ComboBox x:Name="FontCombo" Grid.Column="1" Style="{StaticResource FontCombo}"
+                                  SelectionChanged="OnFontChanged" />
+                    </Grid>
+                    <TextBlock x:Name="HintFont" Style="{StaticResource Hint}" Margin="0,3,0,0" />
+
+                    <Grid Margin="0,2,0,0">
+                        <TextBlock x:Name="LblTextSize" Text="Text size" Style="{StaticResource FieldLabel}" />
+                        <TextBlock Text="{Binding FontSize}" Style="{StaticResource ValueLabel}" />
+                    </Grid>
+                    <Slider Style="{StaticResource SettingSlider}" Minimum="14" Maximum="72" Margin="0,3,0,0" Value="{Binding FontSize}" />
+
+                    <Grid Margin="0,7,0,0">
+                        <TextBlock x:Name="LblTitleSize" Text="Title size" Style="{StaticResource FieldLabel}" />
+                        <TextBlock Text="{Binding TitleSize}" Style="{StaticResource ValueLabel}" />
+                    </Grid>
+                    <Slider Style="{StaticResource SettingSlider}" Minimum="10" Maximum="32" Margin="0,3,0,0" Value="{Binding TitleSize}" />
+
+                    <Grid Margin="0,7,0,0">
+                        <TextBlock x:Name="LblDim" Text="Dim inactive lines" Style="{StaticResource FieldLabel}" />
+                        <TextBlock Text="{Binding Dim, StringFormat={}{0}%}" Style="{StaticResource ValueLabel}" />
+                    </Grid>
+                    <Slider Style="{StaticResource SettingSlider}" Minimum="10" Maximum="90" TickFrequency="5"
+                            IsSnapToTickEnabled="True" Margin="0,3,0,0" Value="{Binding Dim}" />
+
+                    <Grid Margin="0,7,0,0">
+                        <TextBlock x:Name="LblAlignment" Text="Alignment" Style="{StaticResource FieldLabel}" />
+                        <Border HorizontalAlignment="Right" Background="#12FFFFFF" BorderBrush="#1AFFFFFF"
+                                BorderThickness="1" CornerRadius="9" Padding="2">
+                            <StackPanel Orientation="Horizontal">
+                                <Button x:Name="AlignLeftBtn" Style="{StaticResource SegBtn}" Click="OnAlignLeft">
+                                    <Viewbox Width="16" Height="16">
+                                        <Canvas Width="24" Height="24">
+                                            <Path Style="{StaticResource IconPath}"
+                                                  Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                                  Data="M15 12H3 M17 18H3 M21 6H3" />
+                                        </Canvas>
+                                    </Viewbox>
+                                </Button>
+                                <Button x:Name="AlignCenterBtn" Style="{StaticResource SegBtn}" Click="OnAlignCenter">
+                                    <Viewbox Width="16" Height="16">
+                                        <Canvas Width="24" Height="24">
+                                            <Path Style="{StaticResource IconPath}"
+                                                  Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                                  Data="M17 12H7 M19 18H5 M21 6H3" />
+                                        </Canvas>
+                                    </Viewbox>
+                                </Button>
+                            </StackPanel>
+                        </Border>
+                    </Grid>
+                    </StackPanel></Border>
+
+                    <!-- SYNC -->
+                    <Border Style="{StaticResource Card}"><StackPanel>
+                    <TextBlock x:Name="HdrSync" Text="SYNC" Style="{StaticResource GroupTitle}" />
+                    <Grid>
+                        <TextBlock x:Name="LblOffset" Text="Lyrics offset" Style="{StaticResource FieldLabel}" />
+                        <TextBlock x:Name="OffsetValue" Style="{StaticResource ValueLabel}" />
+                    </Grid>
+                    <Slider x:Name="OffsetSlider" Style="{StaticResource SettingSlider}" Minimum="-6000" Maximum="6000"
+                            TickFrequency="50" IsSnapToTickEnabled="True" Margin="0,3,0,0" Value="{Binding Offset}" />
+                    <TextBlock x:Name="HintOffset"
+                               Text="Delays (+) or advances (−) the active line up to ±6 s. Useful if the lyrics are out of sync."
+                               Style="{StaticResource Hint}" />
+                    </StackPanel></Border>
+
+                    <!-- BEHAVIOR -->
+                    <Border Style="{StaticResource Card}"><StackPanel>
+                    <TextBlock x:Name="HdrBehavior" Text="BEHAVIOR" Style="{StaticResource GroupTitle}" />
+                    <Grid Margin="0,2">
+                        <TextBlock x:Name="LblClickthrough" Text="Click-through (ignore clicks)" Style="{StaticResource FieldLabel}" />
+                        <CheckBox Style="{StaticResource ToggleSwitch}" HorizontalAlignment="Right" IsChecked="{Binding ClickThrough}" />
+                    </Grid>
+                    <TextBlock x:Name="HintClickthrough"
+                               Text="This lets the overlay pass clicks through. To disable it, use the tray icon menu."
+                               Style="{StaticResource Hint}" />
+                    <Grid Margin="0,5,0,0">
+                        <TextBlock x:Name="LblPlainFallback" Text="Show plain text if no sync" Style="{StaticResource FieldLabel}" />
+                        <CheckBox Style="{StaticResource ToggleSwitch}" HorizontalAlignment="Right" IsChecked="{Binding PlainFallback}" />
+                    </Grid>
+                    </StackPanel></Border>
+
+                    </StackPanel>
+
+                    <!-- Right column: VISIBILITY, LYRICS CACHE, CHROME EXTENSION LINK, RESET, (hidden) LOCAL DATABASE -->
+                    <StackPanel Grid.Column="1" Margin="3,0,0,0" VerticalAlignment="Top">
+
+                    <!-- VISIBILITY -->
+                    <Border Style="{StaticResource Card}"><StackPanel>
+                    <TextBlock x:Name="HdrVisibility" Text="VISIBILITY" Style="{StaticResource GroupTitle}" />
+
+                    <Grid Margin="0,2,0,0">
+                        <TextBlock x:Name="LblHideJapanese" Text="Hide Japanese lyrics" Style="{StaticResource FieldLabel}" />
+                        <CheckBox Style="{StaticResource ToggleSwitch}" HorizontalAlignment="Right" IsChecked="{Binding HideJapanese}" />
+                    </Grid>
+                    <TextBlock x:Name="HintHideJapanese"
+                               Text="Do not show lyrics that are mostly Japanese"
+                               Style="{StaticResource Hint}" />
+
+                    <Grid Margin="0,2">
+                        <TextBlock x:Name="LblAutohide" Text="Auto-hide header" Style="{StaticResource FieldLabel}" />
+                        <CheckBox Style="{StaticResource ToggleSwitch}" HorizontalAlignment="Right" IsChecked="{Binding AutoHideHeader}" />
+                    </Grid>
+                    <TextBlock x:Name="HintAutohide"
+                               Text="Hides the top bar. Move the mouse or click the overlay to show it for 2 s and open settings."
+                               Style="{StaticResource Hint}" />
+                    <Grid Margin="0,5,0,0">
+                        <TextBlock x:Name="LblShowProgress" Text="Show progress bar" Style="{StaticResource FieldLabel}" />
+                        <CheckBox Style="{StaticResource ToggleSwitch}" HorizontalAlignment="Right" IsChecked="{Binding ShowProgress}" />
+                    </Grid>
+                    <Grid Margin="0,5,0,0">
+                        <TextBlock x:Name="LblShowTimes" Text="Show times (current / total)" Style="{StaticResource FieldLabel}" />
+                        <CheckBox Style="{StaticResource ToggleSwitch}" HorizontalAlignment="Right" IsChecked="{Binding ShowTimes}" />
+                    </Grid>
+                    </StackPanel></Border>
+
+                    <!-- CACHE -->
+                    <Border Style="{StaticResource Card}"><StackPanel>
+                    <TextBlock x:Name="HdrCache" Text="LYRICS CACHE" Style="{StaticResource GroupTitle}" />
+                    <TextBlock x:Name="HintCache"
+                               Text="Lyrics are saved to disk so they aren't downloaded again. Clear the cache to force a fresh download."
+                               Style="{StaticResource Hint}" Margin="0,0,0,5" />
+                    <Button x:Name="ClearCacheBtn" Style="{StaticResource ActionBtn}" Click="OnClearCache">
+                        <StackPanel Orientation="Horizontal">
+                            <Viewbox Width="16" Height="16" Margin="0,0,8,0">
+                                <Canvas Width="24" Height="24">
+                                    <Path Style="{StaticResource IconPath}"
+                                          Data="M3 6h18 M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2 M10 11v6 M14 11v6" />
+                                </Canvas>
+                            </Viewbox>
+                            <TextBlock x:Name="ClearCacheLabel" Text="Clear lyrics cache" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </Button>
+                    <Button x:Name="ClearOffsetsBtn" Style="{StaticResource ActionBtn}" Click="OnClearOffsets" Margin="0,8,0,0">
+                        <StackPanel Orientation="Horizontal">
+                            <Viewbox Width="16" Height="16" Margin="0,0,8,0">
+                                <Canvas Width="24" Height="24">
+                                    <Path Style="{StaticResource IconPath}"
+                                          Data="M2 12 A10 10 0 1 0 22 12 A10 10 0 1 0 2 12 Z M12 7 V12 L16 14" />
+                                </Canvas>
+                            </Viewbox>
+                            <TextBlock x:Name="ClearOffsetsLabel" Text="Clear saved offsets" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </Button>
+                    <TextBlock x:Name="CacheStatus" Style="{StaticResource Hint}" Margin="0,3,0,0"
+                               Visibility="Collapsed" />
+                    </StackPanel></Border>
+
+                    <!-- CHROME EXTENSION LINK -->
+                    <Border Style="{StaticResource Card}"><StackPanel>
+                    <TextBlock x:Name="HdrBridge" Text="CHROME EXTENSION LINK" Style="{StaticResource GroupTitle}" />
+                    <Grid Margin="0,2">
+                        <TextBlock x:Name="LblBridgeEnabled" Text="Enable link" Style="{StaticResource FieldLabel}" />
+                        <CheckBox Style="{StaticResource ToggleSwitch}" HorizontalAlignment="Right" IsChecked="{Binding BridgeEnabled}" />
+                    </Grid>
+                    <Grid Margin="0,5,0,0">
+                        <TextBlock x:Name="LblBridgeToken" Text="Pairing token" Style="{StaticResource FieldLabel}" />
+                    </Grid>
+                    <Grid Margin="0,3,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <Border Grid.Column="0" Background="#12FFFFFF" BorderBrush="#1AFFFFFF" BorderThickness="1"
+                                CornerRadius="7" Padding="9,7" Margin="0,0,8,0">
+                            <TextBlock x:Name="BridgeTokenText" Foreground="#B0FFFFFF" FontFamily="Cascadia Code, Consolas"
+                                       FontSize="11" TextWrapping="Wrap" />
+                        </Border>
+                        <Button x:Name="BridgeCopyBtn" Grid.Column="1" Style="{StaticResource ActionBtn}" Click="OnBridgeCopy">
+                            <TextBlock x:Name="BridgeCopyLabel" Text="Copy" VerticalAlignment="Center" />
+                        </Button>
+                    </Grid>
+                    <TextBlock x:Name="HintBridgeToken" Text="" Style="{StaticResource Hint}" />
+                    </StackPanel></Border>
+
+                    <!-- RESET -->
+                    <Border Style="{StaticResource Card}"><StackPanel>
+                    <Button x:Name="ResetBtn" Style="{StaticResource ActionBtn}" Click="OnReset" Margin="0,2,0,2">
+                        <StackPanel Orientation="Horizontal">
+                            <Viewbox Width="16" Height="16" Margin="0,0,8,0">
+                                <Canvas Width="24" Height="24">
+                                    <Path Style="{StaticResource IconPath}"
+                                          Data="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8 M3 3v5h5" />
+                                </Canvas>
+                            </Viewbox>
+                            <TextBlock x:Name="ResetLabel" Text="Reset" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </Button>
+                    </StackPanel></Border>
+
+                    <!-- LOCAL DATABASE (hidden in this fork; code and handlers kept) -->
+                    <Border x:Name="LocalDbGroup" Style="{StaticResource Card}" Visibility="Collapsed"><StackPanel>
+                    <TextBlock x:Name="HdrLocalDb" Text="LOCAL DATABASE" Style="{StaticResource GroupTitle}" />
+                    <TextBlock x:Name="HintLocalDb"
+                               Text="Link the offline LRCLIB database for instant, offline lookups."
+                               Style="{StaticResource Hint}" Margin="0,0,0,4" />
+                    <TextBlock Margin="0,0,0,4">
+                        <Hyperlink x:Name="DbDumpsLink" Click="OnDbDumps" Foreground="#17D346" TextDecorations="None">
+                            <Run x:Name="DbDumpsText" Text="Download the database ↗" FontSize="11.5" />
+                        </Hyperlink>
+                    </TextBlock>
+                    <TextBlock x:Name="WarnLocalDb" Text="The uncompressed database is around 117 GB."
+                               Style="{StaticResource Hint}" Foreground="#E8A33C" Margin="0,0,0,8" />
+                    <Border Background="#12FFFFFF" BorderBrush="#1AFFFFFF" BorderThickness="1" CornerRadius="7"
+                            Padding="9,7" Margin="0,0,0,8">
+                        <TextBlock x:Name="LocalDbPathText" Foreground="#B0FFFFFF" FontFamily="Cascadia Code, Consolas"
+                                   FontSize="11" TextWrapping="Wrap" Text="(none)" />
+                    </Border>
+                    <Button x:Name="SelectDbBtn" Style="{StaticResource ActionBtn}" Click="OnSelectDb">
+                        <StackPanel Orientation="Horizontal">
+                            <Viewbox Width="16" Height="16" Margin="0,0,8,0">
+                                <Canvas Width="24" Height="24">
+                                    <Path Style="{StaticResource IconPath}"
+                                          Data="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z" />
+                                </Canvas>
+                            </Viewbox>
+                            <TextBlock x:Name="SelectDbLabel" Text="Select database file…" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </Button>
+                    <Button x:Name="UnlinkDbBtn" Style="{StaticResource ActionBtn}" Click="OnUnlinkDb" Margin="0,8,0,0">
+                        <StackPanel Orientation="Horizontal">
+                            <Viewbox Width="16" Height="16" Margin="0,0,8,0">
+                                <Canvas Width="24" Height="24">
+                                    <Path Style="{StaticResource IconPath}" Data="M18 6 6 18 M6 6l12 12" />
+                                </Canvas>
+                            </Viewbox>
+                            <TextBlock x:Name="UnlinkDbLabel" Text="Unlink database" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </Button>
+                    <TextBlock x:Name="LocalDbStatus" Style="{StaticResource Hint}" Margin="0,3,0,0" />
+                    </StackPanel></Border>
+
+                    </StackPanel>
+                </Grid>
+            </ScrollViewer>
+
+            <!-- Inline colour picker (no separate OS dialog). -->
+            <Popup x:Name="ColorPopup" StaysOpen="False" AllowsTransparency="True"
+                   Placement="Left" PopupAnimation="Fade">
+                <c:ColorPicker x:Name="Picker" />
+            </Popup>
+        </Grid>
+    </Border>
+</UserControl>

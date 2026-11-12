@@ -1,0 +1,26 @@
+const fs = require('fs');
+const src = fs.readFileSync(require('path').join(__dirname, '..', 'extension', 'content.js'), 'utf8');
+const a = src.indexOf('const clean ='), b = src.indexOf('function fromYtm');
+const code = src.slice(a, b) + '\nmodule.exports = { fromTitle };';
+const m = { exports: {} };
+new Function('module', code)(m);
+const { fromTitle } = m.exports;
+let fails = 0;
+const t = (name, title, channel, want) => {
+  const g = fromTitle(title, channel);
+  const ok = g.track === want.track && g.artist === want.artist;
+  if (!ok) fails++;
+  console.log((ok ? 'PASS ' : 'FAIL ') + name + '  ->  track="' + g.track + '" artist="' + g.artist + '"');
+};
+t('series on the right, channel = series (the reported case)', '더 월드 (The World) - 히키킹 작곡캠프 오리지날 송', '히키킹', { track: '더 월드 (The World)', artist: '히키킹 작곡캠프 오리지날 송' });
+t('same, channel with english name', '더 월드 (The World) - 히키킹 작곡캠프 오리지날 송', '히키킹 Hikiking', { track: '더 월드 (The World)', artist: '히키킹 작곡캠프 오리지날 송' });
+t('normal Artist - Title, channel = artist', 'IU - Blueming', 'IU', { track: 'Blueming', artist: 'IU' });
+t('normal Artist - Title, channel = label', 'NewJeans - Hype Boy', 'HYBE LABELS', { track: 'Hype Boy', artist: 'NewJeans' });
+t('Title - Artist, channel = artist (exact, old behavior)', 'Blueming - IU', 'IU', { track: 'Blueming', artist: 'IU' });
+t('channel unrelated to both', 'A - B', 'Somebody Else', { track: 'B', artist: 'A' });
+t('no channel', 'Artist - Song', '', { track: 'Song', artist: 'Artist' });
+t('left related, right too (ambiguous): keep order', 'BTS - BTS Dynamite', 'BTS', { track: 'BTS Dynamite', artist: 'BTS' });
+t('Topic channel', 'Song - Artist', 'Artist - Topic', { track: 'Song', artist: 'Artist' });
+t('single letter channel ignored', 'X - Y', 'X', { track: 'Y', artist: 'X' });
+console.log(fails ? fails + ' FAILED' : 'ALL PASS');
+process.exit(fails);

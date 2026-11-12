@@ -1,0 +1,18 @@
+# local experiments / downloads / original upstream copy (not part of this project)
+trials/
+downloads/
+upstream/
+# build output
+**/bin/
+**/obj/
+extension/dist/
+dist-release/
+.vs/
+*.user
+# local state and secrets
+settings.json
+*.bak*
+caption-rejects.json
+localdb.json
+*.sqlite3
+*.db

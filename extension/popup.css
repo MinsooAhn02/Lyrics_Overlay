@@ -1,0 +1,15 @@
+:root { color-scheme: light dark; }
+body { width: 300px; margin: 0; padding: 14px; font: 13px system-ui, "Malgun Gothic", sans-serif; }
+h1 { font-size: 15px; margin: 0 0 10px; }
+.status { padding: 8px 10px; border-radius: 6px; margin-bottom: 12px; background: #8883; }
+.status.ok { background: #2e9e4f33; }
+.status.bad { background: #d9302533; }
+.status.warn { background: #f299004d; }
+label { display: block; margin-bottom: 4px; }
+input { width: 100%; box-sizing: border-box; padding: 6px; margin-bottom: 8px; }
+.row { display: flex; gap: 8px; }
+button { flex: 1; padding: 6px; cursor: pointer; }
+.msg { min-height: 1.2em; margin-top: 8px; }
+.help { color: #888; font-size: 12px; margin: 8px 0 0; }
+.help a { color: inherit; }
+.help a.attn { font-weight: 600; color: #d93025; }

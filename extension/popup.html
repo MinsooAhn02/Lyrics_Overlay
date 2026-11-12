@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <title>Lyrics Overlay Bridge</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <h1>Lyrics Overlay 연결</h1>
+  <div id="status" class="status">확인 중...</div>
+  <label for="token">앱 토큰</label>
+  <input id="token" type="password" autocomplete="off" spellcheck="false" placeholder="토큰 붙여넣기">
+  <div class="row">
+    <button id="save">저장</button>
+    <button id="test">연결 테스트</button>
+  </div>
+  <div id="msg" class="msg"></div>
+  <p class="help">앱 설정 화면의 "Chrome 확장 연결"에서 토큰을 복사해 붙여넣으세요.</p>
+  <p class="help">앱이 없나요? <a id="dl" href="https://github.com/MinsooAhn02/Lyrics_Overlay/releases/latest" target="_blank" rel="noopener noreferrer">앱 다운로드 (GitHub)</a></p>
+  <script src="popup.js"></script>
+</body>
+</html>

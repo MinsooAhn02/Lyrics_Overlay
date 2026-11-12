@@ -1,0 +1,342 @@
+<Window x:Class="LyricsOnTheGo.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:ctrl="clr-namespace:LyricsOnTheGo.Controls"
+        Title="LyricsOnTheGo"
+        Width="440" Height="170"
+        MinWidth="362" MinHeight="100"
+        Left="200" Top="200"
+        WindowStyle="None"
+        AllowsTransparency="True"
+        Background="#01000000"
+        Topmost="True"
+        ShowInTaskbar="False"
+        ResizeMode="CanResize"
+        WindowStartupLocation="Manual"
+        UseLayoutRounding="True"
+        TextOptions.TextFormattingMode="Display"
+        TextOptions.TextRenderingMode="ClearType"
+        MouseLeftButtonDown="OnBodyMouseDown"
+        MouseMove="OnBodyMouseMove"
+        MouseLeftButtonUp="OnBodyMouseUp"
+        MouseEnter="OnWindowMouseEnter"
+        MouseLeave="OnWindowMouseLeave">
+
+    <Window.Resources>
+        <!-- Header chrome buttons: white glyph, transparent, subtle hover. -->
+        <Style x:Key="HeaderButton" TargetType="Button">
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Foreground" Value="White" />
+            <Setter Property="Width" Value="28" />
+            <Setter Property="Height" Value="28" />
+            <Setter Property="FontSize" Value="15" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="b" Background="Transparent" CornerRadius="6">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="b" Property="Background" Value="#33FFFFFF" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Thin slider (background blur): 2 px rounded track, brighter fill, 8 px thumb (10 px on hover/drag),
+             64 x 14 overall. Defined here only; SettingsPanel keeps its own sliders. -->
+        <Style x:Key="ThinSliderTrack" TargetType="RepeatButton">
+            <Setter Property="Focusable" Value="False" />
+            <Setter Property="IsTabStop" Value="False" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="RepeatButton">
+                        <Grid Background="Transparent" />
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style x:Key="ThinSliderFill" TargetType="RepeatButton">
+            <Setter Property="Focusable" Value="False" />
+            <Setter Property="IsTabStop" Value="False" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="RepeatButton">
+                        <Grid Background="Transparent">
+                            <Border Height="2" CornerRadius="1" Background="#E6FFFFFF" VerticalAlignment="Center" />
+                        </Grid>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style x:Key="ThinSliderThumb" TargetType="Thumb">
+            <Setter Property="Width" Value="10" />
+            <Setter Property="Height" Value="14" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Thumb">
+                        <Grid Background="Transparent">
+                            <Ellipse x:Name="dot" Width="8" Height="8" Fill="White"
+                                     HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Grid>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="dot" Property="Width" Value="10" />
+                                <Setter TargetName="dot" Property="Height" Value="10" />
+                            </Trigger>
+                            <Trigger Property="IsDragging" Value="True">
+                                <Setter TargetName="dot" Property="Width" Value="10" />
+                                <Setter TargetName="dot" Property="Height" Value="10" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style x:Key="ThinSlider" TargetType="Slider">
+            <Setter Property="Width" Value="64" />
+            <Setter Property="Height" Value="14" />
+            <Setter Property="Focusable" Value="False" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Slider">
+                        <Grid Background="Transparent">
+                            <Border Height="2" CornerRadius="1" Background="#40FFFFFF" VerticalAlignment="Center" />
+                            <Track x:Name="PART_Track">
+                                <Track.DecreaseRepeatButton>
+                                    <RepeatButton Style="{StaticResource ThinSliderFill}" Command="Slider.DecreaseLarge" />
+                                </Track.DecreaseRepeatButton>
+                                <Track.Thumb>
+                                    <Thumb Style="{StaticResource ThinSliderThumb}" />
+                                </Track.Thumb>
+                                <Track.IncreaseRepeatButton>
+                                    <RepeatButton Style="{StaticResource ThinSliderTrack}" Command="Slider.IncreaseLarge" />
+                                </Track.IncreaseRepeatButton>
+                            </Track>
+                        </Grid>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Window.Resources>
+
+    <!-- Background alpha=1/255: visually transparent (acrylic shows through) but the whole
+         layered surface stays hit-testable for WM_NCHITTEST drag/resize. -->
+    <Grid>
+        <!-- Synced lyrics (auto-follow only: no manual scroll). The panel lives in a Canvas so it is
+             laid out at its FULL height (no automatic layout-clip to the viewport slot), guaranteeing
+             every line is rendered; the outer Grid clips to the viewport and the TranslateTransform
+             scrolls. The top margin keeps the lines clear of the title row. -->
+        <Grid x:Name="LyricsViewport" Margin="18,28,18,0" Background="#01000000">
+            <Canvas x:Name="LyricsCanvas" ClipToBounds="True">
+                <StackPanel x:Name="LyricsPanel"
+                            Width="{Binding ActualWidth, ElementName=LyricsViewport}">
+                    <StackPanel.RenderTransform>
+                        <TranslateTransform x:Name="LyricsTranslate" Y="0" />
+                    </StackPanel.RenderTransform>
+                </StackPanel>
+            </Canvas>
+        </Grid>
+
+        <!-- Plain (unsynced) lyrics: manually scrollable. -->
+        <ScrollViewer x:Name="PlainScroll" Margin="18,34,18,14"
+                      VerticalScrollBarVisibility="Hidden"
+                      Visibility="Collapsed">
+            <TextBlock x:Name="PlainTextBlock"
+                       Foreground="#EDEDED" FontSize="24" FontWeight="Bold"
+                       TextWrapping="Wrap" LineHeight="31"
+                       LineStackingStrategy="BlockLineHeight" />
+        </ScrollViewer>
+
+        <!-- Status (searching / not found / instrumental / play something). -->
+        <TextBlock x:Name="StatusText"
+                   Text="Play something…"
+                   Foreground="White" Opacity="0.6"
+                   FontSize="15"
+                   HorizontalAlignment="Center" VerticalAlignment="Center"
+                   TextAlignment="Center" TextWrapping="Wrap" Margin="24,28,24,8" />
+
+        <!-- Header: the title is always visible; the control buttons (HeaderButtons) fade in only
+             while the mouse is over the window. Dark top gradient keeps the title/glyphs readable.
+             The whole window (header included) is dragged via the Window-level mouse handlers. -->
+        <Border x:Name="HeaderBar" VerticalAlignment="Top" CornerRadius="12,12,0,0"
+                Cursor="SizeAll">
+            <Border.Background>
+                <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+                    <GradientStop Offset="0" Color="#66000000" />
+                    <GradientStop Offset="1" Color="#00000000" />
+                </LinearGradientBrush>
+            </Border.Background>
+            <!-- One line, two columns: A (*) = title (clipped marquee canvas, vertically centred); B (Auto) =
+                 control group, fixed 28 px high and pinned to the top, so a larger title only makes the line
+                 taller downwards. Hiding the controls only fades them (opacity): column B keeps its width. -->
+            <Grid x:Name="HeaderRow" MinHeight="28" Margin="0,0,6,0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+
+                <!-- Title: 12 px left / 4 px top+bottom breathing room; canvas height set in code from Settings.TitleSize.
+                     A title wider than column A is shown as two copies (HeaderTitle + HeaderTitle2, 48 px gap) in
+                     TitleStrip that scroll left endlessly (ticker, see UpdateTitleMarquee). -->
+                <Grid x:Name="HeaderInfo" Grid.Column="0" Margin="12,4,8,4" VerticalAlignment="Center" Visibility="Collapsed">
+                    <Canvas x:Name="TitleCanvas" ClipToBounds="True" Height="16">
+                        <StackPanel x:Name="TitleStrip" Orientation="Horizontal" Canvas.Left="0" Canvas.Top="0">
+                            <StackPanel.RenderTransform>
+                                <TranslateTransform x:Name="TitleTranslate" X="0" />
+                            </StackPanel.RenderTransform>
+                            <TextBlock x:Name="HeaderTitle" Foreground="White" FontSize="12" FontWeight="SemiBold"
+                                       TextWrapping="NoWrap" LineHeight="15"
+                                       LineStackingStrategy="BlockLineHeight" />
+                            <TextBlock x:Name="HeaderTitle2" Foreground="White" FontWeight="SemiBold"
+                                       TextWrapping="NoWrap" Margin="48,0,0,0" Visibility="Collapsed"
+                                       LineStackingStrategy="BlockLineHeight"
+                                       Text="{Binding Text, ElementName=HeaderTitle}"
+                                       FontSize="{Binding FontSize, ElementName=HeaderTitle}"
+                                       FontFamily="{Binding FontFamily, ElementName=HeaderTitle}"
+                                       LineHeight="{Binding LineHeight, ElementName=HeaderTitle}"
+                                       Effect="{Binding Effect, ElementName=HeaderTitle}" />
+                        </StackPanel>
+                    </Canvas>
+                </Grid>
+
+                <StackPanel x:Name="HeaderButtons" Grid.Column="1" Orientation="Horizontal" Height="28"
+                            HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,0,4,0">
+                    <!-- Background opacity (shown inverted: right = more transparent). Value is synced in code
+                         (ApplySettings / OnBgOpacitySlider); no Value here so no change event fires while loading. -->
+                    <Slider x:Name="BgOpacitySlider" Style="{StaticResource ThinSlider}" Minimum="0" Maximum="100"
+                            TickFrequency="1" IsSnapToTickEnabled="True" VerticalAlignment="Center"
+                            Margin="0,0,8,0" Cursor="Arrow" ValueChanged="OnBgOpacitySlider" />
+                    <Button x:Name="ResyncButton" Style="{StaticResource HeaderButton}" Click="OnResync">
+                        <Viewbox Width="16" Height="16">
+                            <Canvas Width="24" Height="24">
+                                <Path Stroke="White" StrokeThickness="2" StrokeStartLineCap="Round"
+                                      StrokeEndLineCap="Round" StrokeLineJoin="Round" Fill="{x:Null}"
+                                      Data="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8 M3 3v5h5" />
+                            </Canvas>
+                        </Viewbox>
+                    </Button>
+                    <Button x:Name="ClickThroughButton" Style="{StaticResource HeaderButton}" Click="OnToggleClickThrough" ToolTip="Click-through">
+                        <Viewbox Width="16" Height="16">
+                            <Canvas Width="24" Height="24">
+                                <Path x:Name="ClickThroughIcon" Stroke="White" StrokeThickness="2" StrokeStartLineCap="Round"
+                                      StrokeEndLineCap="Round" StrokeLineJoin="Round" Fill="{x:Null}"
+                                      Data="M3 3 10.07 19.97 12.58 12.58 19.97 10.07Z" />
+                            </Canvas>
+                        </Viewbox>
+                    </Button>
+                    <Button x:Name="SettingsButton" Style="{StaticResource HeaderButton}" Click="OnOpenSettings" ToolTip="Settings">
+                        <Viewbox Width="16" Height="16">
+                            <Canvas Width="24" Height="24">
+                                <Path Stroke="White" StrokeThickness="2" StrokeStartLineCap="Round" StrokeEndLineCap="Round"
+                                      StrokeLineJoin="Round" Fill="{x:Null}"
+                                      Data="M15 12 A3 3 0 1 1 9 12 A3 3 0 1 1 15 12 M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+                            </Canvas>
+                        </Viewbox>
+                    </Button>
+                    <Button x:Name="PinButton" Style="{StaticResource HeaderButton}" Click="OnTogglePin" ToolTip="Pin on top">
+                        <Viewbox Width="16" Height="16">
+                            <Canvas Width="24" Height="24">
+                                <Path x:Name="PinIcon" Stroke="White" StrokeThickness="2" StrokeStartLineCap="Round"
+                                      StrokeEndLineCap="Round" StrokeLineJoin="Round" Fill="{x:Null}"
+                                      Data="M12 17v5 M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V7a1 1 0 0 1 1-1 2 2 0 0 0 0-4H8a2 2 0 0 0 0 4 1 1 0 0 1 1 1z" />
+                            </Canvas>
+                        </Viewbox>
+                    </Button>
+                    <Button x:Name="CloseButton" Style="{StaticResource HeaderButton}" Click="OnCloseToTray" ToolTip="Close">
+                        <Viewbox Width="16" Height="16">
+                            <Canvas Width="24" Height="24">
+                                <Path Stroke="White" StrokeThickness="2" StrokeStartLineCap="Round" StrokeEndLineCap="Round"
+                                      StrokeLineJoin="Round" Fill="{x:Null}" Data="M18 6 6 18 M6 6 18 18" />
+                            </Canvas>
+                        </Viewbox>
+                    </Button>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- Footer: progress bar + current/total times (README §3.6). No background — the lyrics'
+             bottom fade already opens this area, keeping the glass effect clean. The middle column
+             stays * so that, when the bar is hidden but times are shown, the current/total times
+             sit at the left/right edges. -->
+        <Border x:Name="FooterBar" VerticalAlignment="Bottom" Padding="16,16,16,11"
+                CornerRadius="0,0,12,12" Visibility="Collapsed">
+            <Grid VerticalAlignment="Bottom">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <TextBlock x:Name="TimeCurrent" Grid.Column="0" Text="0:00" Foreground="White"
+                           Opacity="0.7" FontSize="11" VerticalAlignment="Center" Margin="0,0,10,0" />
+                <Border x:Name="ProgressTrack" Grid.Column="1" Height="4" CornerRadius="2"
+                        Background="#29FFFFFF" VerticalAlignment="Center">
+                    <Border x:Name="ProgressFill" Height="4" CornerRadius="2" Background="#17D346"
+                            HorizontalAlignment="Left" Width="0" />
+                </Border>
+                <TextBlock x:Name="TimeTotal" Grid.Column="2" Text="0:00" Foreground="White"
+                           Opacity="0.7" FontSize="11" VerticalAlignment="Center" Margin="10,0,0,0" />
+            </Grid>
+        </Border>
+
+        <!-- Hover bottom bar: [-0.5s][prev][play/pause][next][+0.5s] + current offset. Overlays the lyrics
+             (semi-transparent), hidden (opacity 0, not hit-testable, via SetHeaderShown) while the mouse is away;
+             slides up from below via BottomBarTranslate (see SetHeaderShown). -->
+        <Border x:Name="BottomBar" VerticalAlignment="Bottom" HorizontalAlignment="Center"
+                Margin="0,0,0,10" Padding="6,2,6,3" CornerRadius="14" Background="#40000000"
+                IsHitTestVisible="True" SizeChanged="OnBottomBarSizeChanged">
+            <!-- No backdrop: a small shadow keeps the white glyphs readable. Transparent (not null) keeps the
+                 gaps hit-testable so a double-click there cannot reach a lyric line. -->
+            <Border.Effect>
+                <DropShadowEffect Color="Black" ShadowDepth="0" BlurRadius="4" Opacity="0.8" />
+            </Border.Effect>
+            <Border.RenderTransform>
+                <TranslateTransform x:Name="BottomBarTranslate" Y="0" />
+            </Border.RenderTransform>
+            <StackPanel>
+                <TextBlock x:Name="OffsetLabel" Text="0.0s" Foreground="White" Opacity="0.7" FontSize="9"
+                           HorizontalAlignment="Center" Visibility="Collapsed" />
+                <StackPanel Orientation="Horizontal">
+                    <Button x:Name="SyncMinusButton" Style="{StaticResource HeaderButton}" Width="24" Height="24"
+                            Click="OnSeekBack" Content="&#x2212;5" FontSize="11" ToolTip="-5s" />
+                    <Button x:Name="PrevButton" Style="{StaticResource HeaderButton}" Click="OnPrevTrack" ToolTip="Previous">
+                        <Viewbox Width="14" Height="14">
+                            <Canvas Width="24" Height="24">
+                                <Path Stroke="White" Fill="White" StrokeThickness="2" StrokeLineJoin="Round"
+                                      StrokeStartLineCap="Round" StrokeEndLineCap="Round"
+                                      Data="M19 20 9 12 19 4Z M5 19V5" />
+                            </Canvas>
+                        </Viewbox>
+                    </Button>
+                    <Button x:Name="PlayPauseButton" Style="{StaticResource HeaderButton}" Click="OnPlayPause" ToolTip="Play / Pause">
+                        <Viewbox Width="14" Height="14">
+                            <Canvas Width="24" Height="24">
+                                <Path x:Name="PlayPauseIcon" Stroke="White" Fill="White" StrokeThickness="2"
+                                      StrokeLineJoin="Round" Data="M6 3 20 12 6 21Z" />
+                            </Canvas>
+                        </Viewbox>
+                    </Button>
+                    <Button x:Name="NextButton" Style="{StaticResource HeaderButton}" Click="OnNextTrack" ToolTip="Next">
+                        <Viewbox Width="14" Height="14">
+                            <Canvas Width="24" Height="24">
+                                <Path Stroke="White" Fill="White" StrokeThickness="2" StrokeLineJoin="Round"
+                                      StrokeStartLineCap="Round" StrokeEndLineCap="Round"
+                                      Data="M5 4 15 12 5 20Z M19 5V19" />
+                            </Canvas>
+                        </Viewbox>
+                    </Button>
+                    <Button x:Name="SyncPlusButton" Style="{StaticResource HeaderButton}" Width="24" Height="24"
+                            Click="OnSeekForward" Content="+5" FontSize="11" ToolTip="+5s" />
+                    <Button x:Name="CaptionButton" Style="{StaticResource HeaderButton}" Width="26" Height="24" FontSize="10"
+                            FontWeight="Bold" Click="OnToggleCaptions" Content="CC" Visibility="Collapsed" />
+                </StackPanel>
+            </StackPanel>
+        </Border>
+
+        <!-- Settings overlay (covers the window when open). -->
+        <ctrl:SettingsPanel x:Name="SettingsOverlay" Visibility="Collapsed" />
+    </Grid>
+</Window>

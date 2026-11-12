@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Lyrics Overlay Bridge",
-  "version": "1.3.2",
+  "version": "1.3.3",
   "description": "Sends YouTube / YouTube Music playback state to the local Lyrics overlay app.",
   "browser_specific_settings": {
     "gecko": {

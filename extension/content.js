@@ -157,6 +157,7 @@
   const NON_MUSIC = /^(Gaming|News & Politics|Education|Howto & Style|Science & Technology|Sports|Autos & Vehicles|Pets & Animals|Travel & Events|Nonprofits & Activism)$/;
   const musicLike = (cat, sec, hasList) => !!(!cat || cat === 'Music' || (!NON_MUSIC.test(cat) && ((sec > 0 && sec <= 720) || hasList))); // hasList: mix with a timestamped track list
 
+  const EXT_VERSION = (() => { try { return api.runtime.getManifest().version; } catch (e) { return '?'; } })();
   let staleVid = '', staleSince = 0;
   const STALE_WAIT_MS = 4000;
 
@@ -191,6 +192,8 @@
       isAd: !!document.querySelector('.html5-video-player.ad-showing'),
       isMusic: IS_MUSIC_HOST || musicLike(category, dur, sameVideo && (String(main.desc || '').match(/\d{1,2}:\d{2}/g) || []).length >= 3),
       sentAtMs: Date.now(),
+      // diagnostics only (logged by the app): extension version, url video id, player-data video id, same video?
+      dbg: `v${EXT_VERSION} u=${new URLSearchParams(location.search).get('v') || '-'} m=${(main && main.videoId) || '-'} sv=${sameVideo ? 1 : 0}`,
     };
   }
 

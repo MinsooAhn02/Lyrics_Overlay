@@ -27,7 +27,8 @@ public sealed record BrowserNowPlaying(
     string? Track = null,
     string? Artist = null,
     string? Album = null,
-    string? MetaSource = null);
+    string? MetaSource = null,
+    string? Dbg = null);
 
 /// <summary>
 /// Loopback-only HTTP receiver for the Chrome/Firefox extension. POST /v1/now-playing returns
@@ -261,7 +262,7 @@ public sealed class BrowserBridge : IDisposable
                 string o = origin ?? "";
                 string who = o.Length > 8 ? o[^8..] : o;
                 string T(string x, int n) => x.Length > n ? x[..n] : x;
-                Info($"report ext=..{who} vid={np.VideoId} music={np.IsMusic} paused={np.Paused} dur={np.DurationMs / 1000}s title='{T(np.Title, 40)}' ch='{T(np.Channel, 20)}'");
+                Info($"report ext=..{who} vid={np.VideoId} music={np.IsMusic} paused={np.Paused} dur={np.DurationMs / 1000}s title='{T(np.Title, 40)}' ch='{T(np.Channel, 20)}' {np.Dbg}");
             }
         }
 
@@ -387,6 +388,7 @@ public sealed class BrowserBridge : IDisposable
                 Title = v.Title ?? "", Channel = v.Channel ?? "",
                 Track = StripControl(v.Track), Artist = StripControl(v.Artist),
                 Album = StripControl(v.Album), MetaSource = StripControl(v.MetaSource),
+                Dbg = StripControl(v.Dbg).Length > 120 ? "" : StripControl(v.Dbg),
             };
             if (v.Title.Length > 300 || v.Channel.Length > 200) return false;
             if (v.Track!.Length > 300 || v.Artist!.Length > 200 || v.Album!.Length > 200 || v.MetaSource!.Length > 16) return false;

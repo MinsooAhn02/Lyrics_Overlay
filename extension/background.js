@@ -61,6 +61,7 @@ async function post(body, url = URL_) {
 async function onNowPlaying(payload, tabId) {
   const { nextAt = 0 } = await api.storage.session.get('nextAt');
   if (Date.now() < nextAt) return; // backing off after failures
+  if (payload && typeof payload.dbg === 'string') payload = { ...payload, dbg: `${payload.dbg} tab=${tabId}`.slice(0, 120) };
   const res = await post(payload);
   if (res.ok && res.commands.length)
     await api.tabs.sendMessage(tabId, { type: 'commands', commands: res.commands }).catch(() => {});

@@ -23,7 +23,7 @@ function boot() {
     querySelector: (sel) => (sel.includes('video') ? video : null),
   };
   globalThis.chrome = {
-    runtime: { id: 'x', sendMessage: async (m) => { if (m.type === 'nowPlaying') sent.push(m.payload); return { ok: true }; }, onMessage: { addListener() {} } },
+    runtime: { id: 'x', getManifest: () => ({ version: 'test' }), sendMessage: async (m) => { if (m.type === 'nowPlaying') sent.push(m.payload); return { ok: true }; }, onMessage: { addListener() {} } },
   };
   delete globalThis.browser;
   new Function('window', 'location', 'document', 'setInterval', src)(win, page, doc, (f) => { tick = f; return 1; });
@@ -58,6 +58,7 @@ function boot() {
   e = boot();
   await e.run();
   check('D: no player data yet -> still reports (document.title fallback)', e.sent.length === 1 && e.sent[0].videoId === 'NEWVIDEO001', `sent=${e.sent.length}`);
+  check('D: report says who sent it (version, url id, player id)', typeof e.sent[0].dbg === 'string' && e.sent[0].dbg.startsWith('vtest') && e.sent[0].dbg.includes('u=NEWVIDEO001') && e.sent[0].dbg.includes('m=-') && e.sent[0].dbg.includes('sv=0'), e.sent[0].dbg);
   e.restore();
 
   console.log(fails ? `${fails} FAILED` : 'ALL PASS');

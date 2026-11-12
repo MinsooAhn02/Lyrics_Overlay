@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Lyrics Overlay Bridge",
-  "version": "1.3.2",
+  "version": "1.3.3",
   "description": "Sends YouTube / YouTube Music playback state to the local Lyrics overlay app.",
   "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAuybwZA0GwfLZJVI458+SRsTLOY3l8rC8J/xEw/wg/Y9DjOUYk09IbQAfYZiJfrNjJMVqw9lDd/10FjI7NJb56F0pCcbtHCKJBCTT8XhiNt5rslvfx1uWoIyHmmtqbCJGP0xn2aZIFy2R5u6yYH4ViQ4wTobfNqBbRYnmS/NaZ83x23YjI2x1j6xie+PjeVl/oeYTW+VhrQ6MCZnq4xi9aZzGkwn6dge9SjEI0NCrW0nPWCGkEwFpyqNvJLKpHYy/2oPziZrdX8s/9TP5EHEPV5cyCqqqcSDMrqukSnfnI1iDJYmUG/wMIkNs3/YwE/GXSRAkD4hBiWgodbjmhT5B6QIDAQAB",
   "minimum_chrome_version": "111",

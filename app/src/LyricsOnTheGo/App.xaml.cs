@@ -22,7 +22,16 @@ public partial class App : Application
         _single = new Mutex(true, NativeHost.SingleInstanceMutex, out bool first);
         if (!first) { _single.Dispose(); _single = null; Shutdown(); return; }
 
-        NativeHostRegistrar.EnsureRegistered();   // lets the extension popup start this app
+        // The app runs only when the extension's "앱 켜기" starts it. A plain launch just (re)registers this exe so the
+        // extension can; it opens the overlay only on that first registration (first run / exe moved).
+        bool firstRegistration = NativeHostRegistrar.EnsureRegistered();
+        if (!NativeHost.ConsumeLaunchTicket() && !firstRegistration)
+        {
+            MessageBox.Show("등록되어 있습니다. 앱은 브라우저 확장 팝업의 '앱 켜기'로 켜 주세요.", "Lyrics Overlay",
+                MessageBoxButton.OK, MessageBoxImage.Information);
+            Shutdown();
+            return;
+        }
         new MainWindow().Show();
     }
 

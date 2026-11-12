@@ -46,11 +46,20 @@ function PostQuit($headers) {
     catch { [int]$_.Exception.Response.StatusCode }
 }
 
+$Ticket = Join-Path $env:LOCALAPPDATA 'LyricsOnTheGo\launch-ticket'
+# A plain launch of an already-registered exe must NOT open the overlay (it shows a notice and exits on OK).
+function PlainLaunchBlocked {
+    $p = Start-Process $Exe -PassThru; Start-Sleep 5
+    $blocked = -not (PortOpen) -and -not $p.HasExited   # waiting on the notice, bridge never opened
+    if (-not $p.HasExited) { $p.Kill() }; [void](WaitFor { (AppProcs).Count -eq 0 } 5); $blocked
+}
+
 Write-Host "exe: $Exe"
 StopApp
-Check 'nothing running at the start' ((AppProcs).Count -eq 0 -and -not (PortOpen))
+Start-Process $Exe '--unregister-native-host'; [void](WaitFor { -not (Test-Path $HostKey) } 8)
+Check 'nothing running and not registered at the start' ((AppProcs).Count -eq 0 -and -not (PortOpen) -and -not (Test-Path $HostKey))
 
-# 1. normal start registers the host and takes the single-instance lock
+# 1. first plain launch registers the host and opens the overlay (the only plain launch that does)
 Start-Process $Exe
 Check 'app starts (bridge port opens)' (WaitFor { PortOpen })
 Check 'registry: Chrome key set' (Test-Path $HostKey)
@@ -96,6 +105,14 @@ Check 'quit with token -> 200' ((PostQuit $good) -eq 200)
 Check 'app exits after an authorized quit' (WaitFor { (AppProcs).Count -eq 0 } 10)
 Check 'bridge port closed' (-not (PortOpen))
 
+# 3b. plain launches are refused once registered; an old ticket does not count
+Check 'plain launch (already registered) does not open the overlay' (PlainLaunchBlocked)
+Set-Content $Ticket ([DateTime]::UtcNow.AddMinutes(-5).Ticks)
+Check 'plain launch with a 5-minute-old ticket does not open the overlay' (PlainLaunchBlocked)
+Check 'old ticket was consumed' (-not (Test-Path $Ticket))
+Set-Content $Ticket 'garbage'
+Check 'plain launch with a garbage ticket does not open the overlay' (PlainLaunchBlocked)
+
 # 4. host can start the app from nothing
 $r = Ask '{"cmd":"status"}'
 Check 'host: status -> not running' ($r.Reply.ok -eq $true -and $r.Reply.running -eq $false)
@@ -107,6 +124,7 @@ Check 'host: second start does nothing' ($r.Reply.ok -eq $true -and $r.Reply.sta
 Check 'exactly one overlay process' ((AppProcs).Count -eq 1) "(processes: $((AppProcs).Count))"
 $survivor = (AppProcs)[0]
 Check 'started app is not a child of the host (survives its exit)' ($null -ne $survivor -and -not $survivor.HasExited)
+Check 'launch ticket was consumed by the started app' (-not (Test-Path $Ticket))
 
 # 5. unregister removes everything we created
 StopApp
@@ -115,9 +133,9 @@ Check 'unregister: registry keys gone' (-not (Test-Path $HostKey) -and -not (Tes
 Check 'unregister: manifest files gone' (-not (Test-Path $Dir))
 Check 'unregister: did not start the overlay' ((AppProcs).Count -eq 0 -and -not (PortOpen))
 
-# leave the machine in the normal state: app running and registered again
+# leave the machine in the normal state: app running and registered again (first launch after unregister opens it)
 Start-Process $Exe; [void](WaitFor { PortOpen })
-Check 'app registers itself again on the next normal start' (Test-Path $HostKey)
+Check 'app registers itself again and opens on the first launch after unregister' ((Test-Path $HostKey) -and (PortOpen))
 
 Write-Host ($(if ($fails -eq 0) { 'ALL PASS' } else { "$fails FAILED" }))
 exit $fails

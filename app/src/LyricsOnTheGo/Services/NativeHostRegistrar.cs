@@ -25,17 +25,20 @@ public static class NativeHostRegistrar
     private static string Dir => Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "LyricsOnTheGo", "native-host");
 
-    public static void EnsureRegistered()
+    /// <summary>Registers this exe; true when anything had to be written (first run, or the exe moved) or registering
+    /// failed — the caller then lets this launch through, so a user is never locked out.</summary>
+    public static bool EnsureRegistered()
     {
         try
         {
             string? exe = Environment.ProcessPath;
-            if (string.IsNullOrEmpty(exe) || !File.Exists(exe)) return;
+            if (string.IsNullOrEmpty(exe) || !File.Exists(exe)) return true;
             Directory.CreateDirectory(Dir);
 
             string chromeJson = Path.Combine(Dir, HostName + ".chrome.json");
             string firefoxJson = Path.Combine(Dir, HostName + ".firefox.json");
-            WriteIfChanged(chromeJson, JsonSerializer.Serialize(new
+            bool changed = false;
+            changed |= WriteIfChanged(chromeJson, JsonSerializer.Serialize(new
             {
                 name = HostName,
                 description = "Starts the Lyrics Overlay app",
@@ -43,7 +46,7 @@ public static class NativeHostRegistrar
                 type = "stdio",
                 allowed_origins = new[] { "chrome-extension://" + BrowserBridge.AllowedExtensionId + "/" },
             }));
-            WriteIfChanged(firefoxJson, JsonSerializer.Serialize(new
+            changed |= WriteIfChanged(firefoxJson, JsonSerializer.Serialize(new
             {
                 name = HostName,
                 description = "Starts the Lyrics Overlay app",
@@ -52,12 +55,14 @@ public static class NativeHostRegistrar
                 allowed_extensions = new[] { FirefoxExtensionId },
             }));
 
-            foreach (var k in ChromeKeys) SetDefault(k, chromeJson);
-            SetDefault(FirefoxKey, firefoxJson);
+            foreach (var k in ChromeKeys) changed |= SetDefault(k, chromeJson);
+            changed |= SetDefault(FirefoxKey, firefoxJson);
+            return changed;
         }
         catch (Exception ex)
         {
             DiagLog.LogCompleted("native-host", "NativeHostRegistrar", DiagResult.Error, "register failed: " + ex.GetType().Name + ": " + ex.Message, 0, false);
+            return true;
         }
     }
 
@@ -76,16 +81,18 @@ public static class NativeHostRegistrar
         }
     }
 
-    private static void SetDefault(string subKey, string value)
+    private static bool SetDefault(string subKey, string value)
     {
         using var key = Registry.CurrentUser.CreateSubKey(subKey);
-        if (!string.Equals(key.GetValue("") as string, value, StringComparison.Ordinal))
-            key.SetValue("", value);
+        if (string.Equals(key.GetValue("") as string, value, StringComparison.Ordinal)) return false;
+        key.SetValue("", value);
+        return true;
     }
 
-    private static void WriteIfChanged(string path, string text)
+    private static bool WriteIfChanged(string path, string text)
     {
-        if (File.Exists(path) && File.ReadAllText(path) == text) return;
+        if (File.Exists(path) && File.ReadAllText(path) == text) return false;
         File.WriteAllText(path, text);
+        return true;
     }
 }

@@ -78,12 +78,32 @@ public static class NativeHost
         }
     }
 
+    private static string TicketPath => Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "LyricsOnTheGo", "launch-ticket");
+
+    /// <summary>True (once) when the extension's "start" asked for this launch within the last 30 s.</summary>
+    public static bool ConsumeLaunchTicket()
+    {
+        try
+        {
+            if (!File.Exists(TicketPath)) return false;
+            string text = File.ReadAllText(TicketPath);
+            File.Delete(TicketPath);
+            return long.TryParse(text, out long t) && t <= DateTime.UtcNow.Ticks
+                   && DateTime.UtcNow - new DateTime(t, DateTimeKind.Utc) < TimeSpan.FromSeconds(30);
+        }
+        catch { return false; }
+    }
+
     private static object StartApp()
     {
         string? exe = Environment.ProcessPath;
         if (string.IsNullOrEmpty(exe) || !File.Exists(exe)) return new { ok = false, error = "app path unknown" };
         try
         {
+            // explorer.exe can't pass arguments, so the "started from the extension" signal is a short-lived file.
+            Directory.CreateDirectory(Path.GetDirectoryName(TicketPath)!);
+            File.WriteAllText(TicketPath, DateTime.UtcNow.Ticks.ToString());
             // Through the shell, not as a child of this host: the browser may tear down the host's process tree when it
             // closes, and the overlay must outlive that.
             Process.Start(new ProcessStartInfo("explorer.exe", "\"" + exe + "\"") { UseShellExecute = false });

@@ -1,107 +1,129 @@
-# Lyrics Overlay
+<p align="center">
+  <img src="app/lyricsonthego.png" width="96" alt="">
+</p>
 
-유튜브·유튜브 뮤직에서 재생 중인 노래의 가사를 브라우저 밖에 떠 있는 **항상 위 투명 창**으로 보여 주는 Windows 앱입니다. 브라우저 확장이 재생 정보를 내 PC의 앱으로 보내면, 앱이 가사를 찾아 재생 위치에 맞춰 한 줄씩 따라갑니다.
+<h1 align="center">Lyrics Overlay</h1>
 
-> 개인 프로젝트이고 테스트 단계입니다. 문제가 있으면 [Issues](https://github.com/MinsooAhn02/Lyrics_Overlay/issues)에 알려 주세요.
+<p align="center">유튜브에서 듣는 노래의 싱크 가사를 화면 위에 띄워 주는 Windows 앱</p>
+
+<p align="center">
+  <a href="https://github.com/MinsooAhn02/Lyrics_Overlay/releases/latest"><img src="https://img.shields.io/github/v/release/MinsooAhn02/Lyrics_Overlay" alt="release"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/github/license/MinsooAhn02/Lyrics_Overlay" alt="license"></a>
+  <img src="https://img.shields.io/badge/platform-Windows%2010%2B-blue" alt="platform">
+</p>
+
+브라우저 확장이 유튜브 탭의 재생 상태를 같은 PC의 앱으로 보내고, 앱이 가사를 찾아 재생 위치에 맞춰 보여 줍니다. 가사 창은 브라우저와 별개라서 다른 창을 쓰는 동안에도 계속 위에 떠 있습니다.
+
+개인 프로젝트이고 아직 테스트 단계입니다.
+
+## 기능
+
+- 항상 위, 투명 배경 가사 창
+- 가사 출처: 유튜브 공식 자막 → 로컬 캐시 → [LRCLIB](https://lrclib.net)
+- 시간 정보가 없거나 어긋난 가사는 영상의 자동 생성 자막에 맞춰 싱크 보정
+- 설명란에 타임스탬프가 있는 플레이리스트 영상은 곡별 가사를 이어 붙임
+- 재생목록 전체 셔플 (유튜브 셔플은 불러온 일부만 섞음)
+- 가사 창에서 재생 조작, 줄 더블클릭으로 이동
 
 ## 설치
 
-앱과 브라우저 확장이 **둘 다** 필요합니다. 확장은 재생 정보를 앱으로 보내기만 하고, 가사 창은 앱이 띄웁니다.
+필요한 것: Windows 10 (2004) 이상, Chrome 111+ 또는 Firefox 128+
 
-1. **앱**: [Releases](https://github.com/MinsooAhn02/Lyrics_Overlay/releases/latest)에서 `LyricsOverlay-win-x64.zip`을 받아, 계속 둘 폴더에 풉니다(다운로드 폴더 말고). `LyricsOverlay.exe`를 **한 번** 더블클릭하면 브라우저에 등록되고 앱이 켜집니다.
-   - 설치나 .NET이 따로 필요 없습니다(약 70MB).
-   - 서명되지 않은 프로그램이라 SmartScreen 경고가 뜰 수 있습니다. **추가 정보 → 실행**을 누르세요.
-2. **확장**
-   - **Chrome**: `lyrics-overlay-bridge-chrome.zip`을 풀고 `chrome://extensions` → **개발자 모드** → **압축해제된 확장 프로그램을 로드합니다** → 푼 폴더.
-   - **Firefox**: 서명된 `.xpi`는 준비되는 대로 Releases에 올립니다. 그전에는 아래 [직접 빌드](#직접-빌드)의 임시 로드를 쓰세요.
-3. **연결**: 앱 설정(톱니바퀴)의 **토큰**을 복사해 확장 팝업에 붙여넣고 **저장** → **연결 테스트**. 배지가 `ON`이면 유튜브에서 노래를 재생하세요.
+앱과 확장이 둘 다 있어야 동작합니다. [Releases](https://github.com/MinsooAhn02/Lyrics_Overlay/releases/latest)에서 받으세요.
 
-## 켜고 끄기
+**앱**
 
-- 앱은 확장 팝업의 **앱 켜기 / 앱 끄기**로만 켜고 끕니다. 자동 실행은 없습니다.
-- exe를 다시 더블클릭하면 켜지지 않고 안내만 뜹니다. exe를 다른 폴더로 옮겼다면 새 위치에서 한 번 더블클릭하세요(다시 등록되며 켜집니다).
-- 가사 창의 **X는 트레이로 숨기기**입니다. 완전히 끄려면 **앱 끄기** 또는 트레이 아이콘 우클릭 → **종료**.
-- 등록은 현재 Windows 사용자 계정에만 합니다(관리자 권한 불필요). 지우려면 `LyricsOverlay.exe --unregister-native-host`.
-  - 레지스트리: `HKCU\Software\{Google\Chrome, Microsoft\Edge, Mozilla}\NativeMessagingHosts\com.lyricsoverlay.host`
-  - 파일: `%LOCALAPPDATA%\LyricsOnTheGo\native-host\`
-  - 이 도우미는 "앱이 켜져 있는지 확인"과 "앱 켜기"만 할 수 있고, 이 확장만 호출할 수 있습니다.
+1. `LyricsOverlay-win-x64.zip`을 계속 둘 폴더에 풉니다. .NET 설치는 필요 없습니다.
+2. `LyricsOverlay.exe`를 한 번 실행하면 브라우저에 등록되고 가사 창이 뜹니다.
 
-## 가사 창 사용법
+서명되지 않은 exe라서 SmartScreen 경고가 나오면 *추가 정보 → 실행*을 누르세요.
 
-마우스를 올리면 아래쪽에 버튼이 나타나고, 3초 가만히 있으면 숨습니다.
+**확장**
+
+- Firefox: `lyrics-overlay-bridge-firefox-<버전>.xpi`를 Firefox 창에 끌어다 놓고 추가
+- Chrome: `lyrics-overlay-bridge-chrome.zip`을 풀고 `chrome://extensions` → 개발자 모드 → *압축해제된 확장 프로그램 로드*
+
+**연결**
+
+앱 설정(톱니바퀴)의 토큰을 복사해 확장 팝업에 붙여 넣고 *저장* → *연결 테스트*를 누릅니다. 배지가 `ON`이 되면 유튜브에서 노래를 틀면 됩니다.
+
+## 사용법
+
+앱은 확장 팝업의 *앱 켜기* / *앱 끄기*로 켜고 끕니다. 처음 등록한 뒤에는 exe를 직접 실행해도 켜지지 않고 안내만 나옵니다. 가사 창의 X는 트레이로 숨기기이고, 숨긴 창은 *앱 켜기*로 다시 띄울 수 있습니다.
+
+가사 창에 마우스를 올리면 아래에 버튼이 나옵니다.
 
 | 버튼 | 동작 |
 |---|---|
-| `−5` / `+5` | 5초 뒤로 / 앞으로 |
-| 이전 · 재생 · 다음 | 유튜브 재생 조작. 유튜브의 이전 버튼이 안 먹을 때(셔플 등)는 브라우저 뒤로 가기로 대신합니다 |
-| `CC` / `보정` / `MIX` | 유튜브 자막을 가사로 쓰는 중 / 자막으로 시간 보정 중 / 설명란 곡 목록으로 이어 붙이는 중. 눌러서 이 영상만 끄고 켭니다 |
-| `♪` | 음악이 아니라고 잘못 판단해 건너뛴 영상에서, 눌러서 가사를 찾게 합니다 |
-| 셔플 아이콘 | 유튜브 재생목록에서만 보입니다. 아래 [셔플](#셔플) 참고 |
+| `−5` `+5` | 5초 뒤로 / 앞으로 |
+| 이전 · 재생 · 다음 | 유튜브 재생 조작 |
+| `CC` `보정` `MIX` | 지금 쓰는 가사 출처(공식 자막 / 자막으로 보정 / 설명란 곡 목록). 누르면 이 영상에서만 끄고 켬 |
+| `♪` | 음악이 아니라고 잘못 판단한 영상에서 가사 찾기 |
+| 셔플 | 재생목록에서만 보임 |
 
-- 가사 줄을 더블클릭하면 그 시점으로 이동합니다.
-- 싱크 미세 조정은 설정의 가사 오프셋(±6초)으로 하며, 곡마다 저장됩니다.
+싱크가 조금 어긋나면 설정의 가사 오프셋(±6초)으로 맞춥니다. 오프셋은 곡마다 저장됩니다.
 
-### 셔플
+**셔플**은 재생목록 전체를 읽어서 모든 곡이 한 번씩 나오게 섞고, 다 돌면 다시 섞습니다. 믹스(`RD…`), 비공개 재생목록, 유튜브 뮤직은 지원하지 않습니다.
 
-유튜브 셔플은 불러온 일부만 섞습니다. 셔플 아이콘을 켜면 재생목록 **전체**(재생할 수 있는 곡만)를 읽어 모든 곡이 한 번씩 나오도록 섞고, 곡이 끝나거나 가사 창의 `다음`/`이전`을 누르면 그 순서로 이동합니다. 다 돌면 새로 섞습니다.
+## 동작 방식
 
-- 지원하지 않음: 믹스(`RD…`), 비공개 재생목록, 유튜브 뮤직. 실패하면 아이콘에 마우스를 올려 이유를 볼 수 있습니다.
-- 키보드 미디어 키나 유튜브 화면의 다음 버튼은 유튜브 자체 순서를 따릅니다.
-
-## 가사를 찾는 순서
-
-1. **유튜브 공식 자막**: 사람이 올린 자막만 씁니다. 효과음 태그(`[Music]`, ♪)뿐이거나, 6줄 미만이거나, 앞부분만 있는 자막은 쓰지 않습니다.
-2. **저장된 가사**: 한 번 받은 가사는 `%LOCALAPPDATA%\LyricsOnTheGo\lyrics-cache`에 저장해 먼저 보여 줍니다. 저장한 지 일주일이 지난 가사만 LRCLIB에 다시 확인해, 바뀌었으면 새 결과로 바꿉니다(싱크 가사를 일반 가사로 바꾸지는 않음).
-3. **[LRCLIB](https://lrclib.net)**: 곡명·아티스트·길이로 찾고, 영상 길이와 차이가 큰 후보는 거릅니다.
-
-- **시간 보정**: 싱크 가사의 타이밍이 영상과 다르면(커버, 긴 인트로 등) 영상의 자동 생성 자막을 기준으로 줄 시각을 다시 맞춥니다. 오디오는 쓰지 않고, PC 안에서 글자 비교로만 계산합니다.
-- **플레이리스트 영상**: 설명란에 `00:00 곡명` 같은 곡 목록이 있으면 곡별 가사를 찾아 이어 붙입니다.
-- 곡명·아티스트는 유튜브 뮤직 플레이어 → 설명란 음악 정보 → Topic 채널 → 영상 제목 순서로 읽고, 표시할 때는 `[Official MV]`, 이모지, 해시태그를 뺍니다.
-
-## 개인정보와 보안
-
-- 확장은 유튜브 탭의 재생 상태와 자막만 읽어 **내 PC의 앱(`127.0.0.1:47831`)으로만** 보냅니다.
-- 가사 검색을 위해 곡명·아티스트·길이를 LRCLIB로 보냅니다.
-- 앱은 토큰이 맞고, 허용된 확장에서 온 요청만 받습니다. 명령(다음 곡 등)은 화면에 표시 중인 탭에만 전달합니다.
-
-## 직접 빌드
-
-필요한 것: Windows 10 이상, .NET SDK 8, Chrome 111+ 또는 Firefox 128+.
-
-```powershell
-dotnet build app\LyricsOnTheGo.sln -c Release      # 앱
-pwsh tools\build-firefox.ps1                        # Firefox 패키지 (extension\dist\)
-pwsh tools\build-release.ps1                        # 배포용 zip 3개 (dist-release\, 앱이 꺼져 있어야 함)
+```
+유튜브 탭 ── 확장 ──▶ 127.0.0.1:47831 ──▶ Lyrics Overlay ──▶ LRCLIB
+            (재생 상태, 자막)              (가사 창)          (곡명, 아티스트, 길이)
 ```
 
-- Chrome: `chrome://extensions` → 개발자 모드 → `extension` 폴더 로드. 확장 ID가 `khoankekndekkeoamaopgjhpogbooldk`여야 합니다.
-- Firefox 임시 로드: `about:debugging#/runtime/this-firefox` → **임시 부가 기능 로드...** → `extension\dist\firefox\manifest.json`. Firefox를 끄면 사라집니다.
-- Firefox 영구 설치: [addons.mozilla.org/developers](https://addons.mozilla.org/developers)에 **직접 배포(unlisted)**로 zip을 올려 서명된 `.xpi`를 받습니다. 다시 올릴 때는 `extension/manifest.firefox.json`의 `version`을 올립니다.
+가사는 다음 순서로 찾습니다.
 
-### 검사 스크립트 (`tools\`)
+1. 유튜브 공식 자막. 사람이 올린 자막만 쓰고, `[Music]` 같은 태그뿐이거나 너무 짧은 자막은 건너뜁니다.
+2. 로컬 캐시(`%LOCALAPPDATA%\LyricsOnTheGo\lyrics-cache`). 일주일이 지난 항목만 LRCLIB에서 다시 확인합니다.
+3. LRCLIB. 곡명·아티스트·길이로 찾고, 영상 길이와 많이 다른 후보는 버립니다. 아티스트가 여러 명이라 못 찾으면 첫 번째 아티스트로 다시 찾습니다.
 
-| 스크립트 | 확인 내용 |
-|---|---|
-| `test-bridge.ps1 -Token <토큰>` | 앱 연결 인증·출처·형식·크기 제한 (30개) |
-| `native-host-check.ps1` | 앱 켜기/끄기, 직접 실행 막기, 등록/해제 (40개) |
-| `show-again-check.ps1` | 트레이로 숨긴 오버레이를 '앱 켜기'로 다시 띄우기 |
-| `shuffle-check.js [--live]` | 셔플 순서·이동·실패 처리 (`--live`: 실제 재생목록 읽기) |
-| `shuffle-button-check.ps1` | 실제 앱의 셔플 버튼과 명령 전달 |
-| `caption-pot-check.js` | 유튜브 자막 토큰 잡기 (늦게 오는 토큰, 재시도 1번) |
-| `*-check.js`, `*-check\` | 제목 정리, 음악 판별, 시간 보정, 플레이리스트 가사 등 |
-| `leak-check.ps1` | 장시간 사용 시 메모리 증가 여부 |
+곡명과 아티스트는 유튜브 뮤직 정보, 설명란의 음악 정보, Topic 채널, 영상 제목 순서로 가져옵니다.
 
-`native-host-check`, `show-again-check`, `shuffle-button-check`, `leak-check`는 실행 중인 앱을 껐다 켭니다. 브라우저에서 음악이 재생 중이면 결과가 섞이니 멈춘 상태에서 돌리세요.
+## 개인정보
 
-## 알려진 한계
+- 확장은 유튜브 탭의 재생 상태와 자막을 같은 PC의 앱(`127.0.0.1`)에만 보냅니다.
+- 앱은 가사 검색을 위해 곡명, 아티스트, 길이를 LRCLIB에 보냅니다. 그 외 외부 전송은 없습니다.
+- 앱은 토큰이 맞고 허용된 확장에서 온 요청만 받습니다.
+- 브라우저 등록은 현재 사용자 계정(`HKCU`)에만 하고 관리자 권한을 쓰지 않습니다. 등록을 지우려면 `LyricsOverlay.exe --unregister-native-host`를 실행하세요.
 
-- 유튜브가 자막 요청에 영상별 인증 토큰을 요구해서, 자막을 못 받는 영상이 있을 수 있습니다.
-- 셔플은 Firefox에서 확인했습니다. Chrome에서는 아직 확인하지 않았습니다.
-- 브라우저 탭이 뒤에 있으면 브라우저가 확장의 보고를 늦춥니다. 같은 곡이면 앱이 그대로 유지하지만, 버튼 반응이 늦을 수 있습니다.
+## 개발
+
+```powershell
+dotnet build app\LyricsOnTheGo.sln -c Release   # 앱
+pwsh tools\build-firefox.ps1                     # Firefox 패키지 (extension\dist\)
+pwsh tools\build-release.ps1                     # 배포 파일 (dist-release\, 앱을 끈 상태에서)
+```
+
+개발 중에는 Chrome에서 `extension` 폴더를 바로 로드하면 됩니다. Firefox는 `about:debugging`에서 `extension\dist\firefox\manifest.json`을 임시로 로드합니다.
+
+```
+app/         WPF 앱 (.NET 8)
+extension/   Chrome / Firefox 확장 (Manifest V3)
+tools/       빌드 스크립트와 검사 스크립트
+```
+
+`tools\`의 검사 스크립트:
+
+- `node tools\<이름>-check.js`: 제목 정리, 음악 판별, 셔플, 자막 토큰, 팝업 등 확장 로직
+- `dotnet run --project tools\display-check` 등: 앱 로직 (제목 표시, 시간 보정, 플레이리스트 가사)
+- `pwsh tools\test-bridge.ps1 -Token <토큰>`: 앱 연결의 인증과 입력 검사
+- `native-host-check.ps1`, `show-again-check.ps1`, `shuffle-button-check.ps1`, `leak-check.ps1`: 실제 앱을 켜고 끄며 검사합니다. 브라우저에서 음악을 멈춘 상태에서 돌리세요.
+
+## 알려진 문제
+
+- 유튜브가 자막 요청에 영상별 토큰을 요구해서 자막을 못 받는 영상이 있습니다. 이때는 LRCLIB 가사를 씁니다.
+- 브라우저 탭이 뒤에 있으면 브라우저가 확장의 보고를 늦춰서 버튼 반응이 느릴 수 있습니다.
+- 셔플은 Firefox에서만 충분히 확인했습니다.
+
+## 기여
+
+버그는 [Issues](https://github.com/MinsooAhn02/Lyrics_Overlay/issues)에 영상 링크와 증상을 적어 주세요. `%LOCALAPPDATA%\LyricsOnTheGo\captions.log`에서 해당 곡 부분을 같이 붙여 주면 원인을 찾기 쉽습니다. PR도 환영합니다.
 
 ## 라이선스
 
-- 이 저장소: MIT (`LICENSE`)
-- `app/`은 [LyricsOnTheGo](https://github.com/The-MuffinDev/LyricsOnTheGo)(MIT, Luis Anchondo)를 고친 것이라 원 라이선스(`app/LICENSE`)를 유지합니다.
-- 내장 글꼴 Pretendard: SIL OFL 1.1 (`app/src/LyricsOnTheGo/Fonts/LICENSE-Pretendard.txt`)
-- 가사는 각 제공처의 약관과 저작권을 따릅니다.
+[MIT](LICENSE)
+
+- `app/`은 [LyricsOnTheGo](https://github.com/The-MuffinDev/LyricsOnTheGo)(MIT, Luis Anchondo)를 바탕으로 했고 원 라이선스(`app/LICENSE`)를 유지합니다.
+- 내장 글꼴 [Pretendard](https://github.com/orioncactus/pretendard): SIL OFL 1.1
+- 가사의 저작권은 각 권리자에게 있습니다. 가사 데이터는 [LRCLIB](https://lrclib.net)에서 가져옵니다.

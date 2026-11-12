@@ -62,6 +62,19 @@ public static class TitleCleaner
     //  | YOASOBI「夜に駆ける」Official Music Video                   | YOASOBI「夜に駆ける」                     |
     //  | 선우정아 - 도망가자 (Prod. by X) 뮤비                       | 선우정아 - 도망가자                       |
     //  | (Official Video)                                        | (Official Video)  (empty result -> original) |
+    // "Jvcki Wai, Coogie, Paloalto & 뱃사공" / "A x B" / "A feat. B" -> "A". LRCLIB files collaborations under the main
+    // artist, so a lookup with the whole list finds nothing. " and " is not a separator (band names: "Simon and Garfunkel").
+    private static readonly Regex ArtistSeparator = new(
+        @"\s*(?:,|&|＆|、|/|\s[xX×]\s|\s(?:feat\.?|ft\.?|featuring|with)\s)\s*", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+
+    /// <summary>The first artist of a credit list; the trimmed input when it names only one (or the first is under 2 chars).</summary>
+    public static string FirstArtist(string artist)
+    {
+        string a = (artist ?? "").Trim();
+        string first = ArtistSeparator.Split(a, 2)[0].Trim();
+        return first.Length >= 2 ? first : a;
+    }
+
     /// <summary>Returns the cleaned title; the trimmed original when cleaning would leave nothing; "" only for blank input.</summary>
     public static string Clean(string title)
     {

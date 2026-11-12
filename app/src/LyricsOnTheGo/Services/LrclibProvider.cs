@@ -284,6 +284,15 @@ public sealed class LrclibProvider : ILyricsProvider
             }
         }
 
+        // No synced lyrics under the whole credit list: try the main artist alone (one more round, only on a miss).
+        string first = TitleCleaner.FirstArtist(artist);
+        if (first != artist.Trim())
+        {
+            var f = await FetchStandardAsync(title, first, album, durationMs, ct, path + ">first-artist");
+            if (IsSynced(f) || (bestPlain is null && f.Found))
+                return f;
+        }
+
         if (bestPlain is not null)
             return Logged(path, candidates, plainDiff, bestPlain);
 

@@ -43,5 +43,21 @@ S("no report text", "청혼", null, "", false);
 S("one-letter title never matches", "a", "a", null, false);
 S("autoplay to a longer title is a new song", "Love Story", "Love", null, false);
 S("autoplay to a live version is a new song", "Song", "Song (Live)", null, false);
+// FirstArtist: main artist of a credit list (LRCLIB retry when the whole list finds nothing)
+void A(string name, string input, string want)
+{
+    string got = TitleCleaner.FirstArtist(input);
+    bool ok = got == want; if (!ok) fails++;
+    Console.WriteLine($"{(ok ? "PASS" : "FAIL")} {name}  '{input}' -> '{got}'" + (ok ? "" : $"   (want '{want}')"));
+}
+A("comma + ampersand list (the reported case)", "Jvcki Wai, Coogie, Paloalto, The Quiett & 뱃사공", "Jvcki Wai");
+A("ampersand with Korean + English names", "저스디스 & 팔로알토 (JUSTHIS & Paloalto)", "저스디스");
+A("x collaboration", "Zedd x Alessia Cara", "Zedd");
+A("feat.", "IU feat. SUGA", "IU");
+A("single artist unchanged", "NewJeans", "NewJeans");
+A("'and' is part of a band name", "Simon and Garfunkel", "Simon and Garfunkel");
+A("x inside a name is not a separator", "Mxmtoon", "Mxmtoon");
+A("one-letter first part -> keep the whole credit", "X & Y", "X & Y");
+A("blank", "  ", "");
 Console.WriteLine(fails == 0 ? "ALL PASS" : $"{fails} FAILED");
 return fails;

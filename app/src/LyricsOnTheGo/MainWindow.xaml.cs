@@ -117,10 +117,15 @@ public partial class MainWindow : Window
     private DispatcherTimer? _peekTimer;
     private bool _syncingSlider;   // true while code (not the user) moves BgOpacitySlider
     private bool _sliderReady;     // false until the first ApplySettings has synced the slider
+    private readonly System.Threading.EventWaitHandle _showEvent;   // kept alive for the app's lifetime (the wait is registered on it)
 
     public MainWindow()
     {
         InitializeComponent();
+
+        // "앱 켜기" while the app runs hidden in the tray: show the overlay again.
+        _showEvent = new System.Threading.EventWaitHandle(false, System.Threading.EventResetMode.AutoReset, NativeHost.ShowEvent);
+        System.Threading.ThreadPool.RegisterWaitForSingleObject(_showEvent, (_, _) => Dispatcher.BeginInvoke(new Action(ShowFromTray)), null, -1, false);
 
         SourceInitialized += OnSourceInitialized;
         LocationChanged += (_, _) => SyncGlass();

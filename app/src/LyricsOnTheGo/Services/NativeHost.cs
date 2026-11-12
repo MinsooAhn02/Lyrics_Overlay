@@ -15,6 +15,8 @@ namespace LyricsOnTheGo.Services;
 public static class NativeHost
 {
     public const string SingleInstanceMutex = @"Local\LyricsOverlay.Single";
+    /// <summary>Set by "start" when the app already runs: the app brings its overlay back from the tray.</summary>
+    public const string ShowEvent = @"Local\LyricsOverlay.Show";
     private const int MaxMessage = 4096;
 
     /// <summary>Chrome passes the caller's origin as the first argument, Firefox passes the manifest path and the extension id.</summary>
@@ -71,7 +73,12 @@ public static class NativeHost
             case "status":
                 return new { ok = true, running = AppRunning() };
             case "start":
-                if (AppRunning()) return new { ok = true, running = true, started = false };
+                if (AppRunning())
+                {
+                    bool shown = false;
+                    try { if (EventWaitHandle.TryOpenExisting(ShowEvent, out var ev)) using (ev) shown = ev.Set(); } catch { /* old app build: no event */ }
+                    return new { ok = true, running = true, started = false, shown };
+                }
                 return StartApp();
             default:
                 return new { ok = false, error = "unknown command" };

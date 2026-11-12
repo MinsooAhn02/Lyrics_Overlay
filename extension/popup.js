@@ -38,7 +38,7 @@ $('launch').addEventListener('click', async () => {
   $('msg').textContent = '앱을 켜는 중...';
   try {
     const r = await api.runtime.sendNativeMessage(HOST, { cmd: 'start' });
-    $('msg').textContent = r && r.ok ? (r.started ? '앱을 켰습니다.' : '이미 실행 중입니다.') : `실패: ${(r && r.error) || '응답 없음'}`;
+    $('msg').textContent = r && r.ok ? (r.started ? '앱을 켰습니다.' : r.shown ? '이미 실행 중이라 창을 다시 띄웠습니다.' : '이미 실행 중입니다.') : `실패: ${(r && r.error) || '응답 없음'}`;
   } catch (e) {
     $('msg').textContent = '앱을 켤 수 없습니다. 앱(LyricsOverlay.exe)을 한 번 직접 실행하면 등록됩니다.';
   }

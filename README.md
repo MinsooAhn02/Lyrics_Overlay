@@ -84,13 +84,14 @@ pwsh tools\build-release.ps1                        # 배포용 zip 3개 (dist-r
 |---|---|
 | `test-bridge.ps1 -Token <토큰>` | 앱 연결 인증·출처·형식·크기 제한 (30개) |
 | `native-host-check.ps1` | 앱 켜기/끄기, 직접 실행 막기, 등록/해제 (40개) |
+| `show-again-check.ps1` | 트레이로 숨긴 오버레이를 '앱 켜기'로 다시 띄우기 |
 | `shuffle-check.js [--live]` | 셔플 순서·이동·실패 처리 (`--live`: 실제 재생목록 읽기) |
 | `shuffle-button-check.ps1` | 실제 앱의 셔플 버튼과 명령 전달 |
 | `caption-pot-check.js` | 유튜브 자막 토큰 잡기 (늦게 오는 토큰, 재시도 1번) |
 | `*-check.js`, `*-check\` | 제목 정리, 음악 판별, 시간 보정, 플레이리스트 가사 등 |
 | `leak-check.ps1` | 장시간 사용 시 메모리 증가 여부 |
 
-`native-host-check`, `shuffle-button-check`, `leak-check`는 실행 중인 앱을 껐다 켭니다. 브라우저에서 음악이 재생 중이면 결과가 섞이니 멈춘 상태에서 돌리세요.
+`native-host-check`, `show-again-check`, `shuffle-button-check`, `leak-check`는 실행 중인 앱을 껐다 켭니다. 브라우저에서 음악이 재생 중이면 결과가 섞이니 멈춘 상태에서 돌리세요.
 
 ## 알려진 한계
 

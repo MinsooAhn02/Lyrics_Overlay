@@ -42,6 +42,7 @@ public sealed class BrowserBridge : IDisposable
 
     private const string Path_ = "/v1/now-playing";
     private const string CapPath_ = "/v1/captions";
+    private const string QuitPath_ = "/v1/quit";
     private const int MaxBody = 8 * 1024;
     private const int MaxCaptionBody = 256 * 1024;
     private const int MaxQueuedCommands = 16;
@@ -82,6 +83,9 @@ public sealed class BrowserBridge : IDisposable
     public BrowserBridge(Settings settings) => _settings = settings;
 
     public event Action<BrowserNowPlaying>? Updated;
+
+    /// <summary>The extension popup asked the app to exit (authenticated like every other request). Raised on a pool thread.</summary>
+    public event Action? QuitRequested;
 
     public BrowserNowPlaying? Latest => _snap?.Value;
     public DateTimeOffset LatestAt => _snap?.At ?? default;
@@ -205,7 +209,8 @@ public sealed class BrowserBridge : IDisposable
         { Reply(res, 403, Err("forbidden")); return; }
 
         bool isCaps = req.Url?.AbsolutePath == CapPath_;
-        if (req.Url?.AbsolutePath != Path_ && !isCaps) { Reply(res, 404, Err("not found")); return; }
+        bool isQuit = req.Url?.AbsolutePath == QuitPath_;
+        if (req.Url?.AbsolutePath != Path_ && !isCaps && !isQuit) { Reply(res, 404, Err("not found")); return; }
         int maxBody = isCaps ? MaxCaptionBody : MaxBody;
 
         var origin = req.Headers["Origin"];
@@ -238,6 +243,15 @@ public sealed class BrowserBridge : IDisposable
         using (cts.Token.Register(() => { try { res.Abort(); } catch { } }))
             body = await ReadBody(req.InputStream, maxBody, cts.Token).ConfigureAwait(false);
         if (body is null) { Reply(res, 413, Err("body too large"), origin); return; }
+
+        if (isQuit)
+        {
+            Info("quit requested by the extension");
+            Reply(res, 200, "{}", origin);
+            try { QuitRequested?.Invoke(); }
+            catch (Exception ex) { Log("quit subscriber threw: " + ex.GetType().Name); }
+            return;
+        }
 
         if (isCaps)
         {

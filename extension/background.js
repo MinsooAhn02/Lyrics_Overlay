@@ -3,6 +3,7 @@
 const api = globalThis.browser ?? globalThis.chrome; // promise-based in both browsers
 const URL_ = 'http://127.0.0.1:47831/v1/now-playing';
 const CAP_URL = 'http://127.0.0.1:47831/v1/captions';
+const QUIT_URL = 'http://127.0.0.1:47831/v1/quit';
 const MAX_BACKOFF_MS = 30000;
 const NO_TOKEN = '토큰이 없습니다';
 
@@ -75,6 +76,10 @@ api.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   }
   if (msg.type === 'captions' && sender.tab) { // official captions: one POST per video, content.js resends until ok
     post(msg.payload, CAP_URL).then(({ ok }) => sendResponse({ ok })).catch(() => sendResponse({ ok: false }));
+    return true;
+  }
+  if (msg.type === 'quit') { // popup: ask the app to exit (token-authenticated, same as every other request)
+    post({}, QUIT_URL).then(({ ok, error }) => sendResponse({ ok, error })).catch(() => sendResponse({ ok: false, error: '알 수 없는 오류' }));
     return true;
   }
   if (msg.type === 'test') { // popup: authenticated ping, ignores backoff, carries no playback data

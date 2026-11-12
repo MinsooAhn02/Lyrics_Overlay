@@ -1315,6 +1315,7 @@ public partial class MainWindow : Window
             BrowserBridge.EnsureToken(_settings);
             _bridge = new BrowserBridge(_settings);
             _bridge.Updated += OnBridgeUpdated;
+            _bridge.QuitRequested += () => Dispatcher.BeginInvoke(new Action(Quit));   // popup "앱 끄기"
             ApplyBridgeEnabled();
         }
         catch (Exception ex)

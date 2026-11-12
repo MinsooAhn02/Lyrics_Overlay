@@ -13,3 +13,4 @@ button { flex: 1; padding: 6px; cursor: pointer; }
 .help { color: #888; font-size: 12px; margin: 8px 0 0; }
 .help a { color: inherit; }
 .help a.attn { font-weight: 600; color: #d93025; }
+.power { margin-top: 8px; }

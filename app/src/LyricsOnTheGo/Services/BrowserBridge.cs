@@ -73,6 +73,8 @@ public sealed class BrowserBridge : IDisposable
     private CancellationTokenSource? _cts;
     private volatile Snapshot? _snap;
     private volatile string? _lastError;
+    private string _lastReportSig = "";
+    private long _lastReportTick;
     private long _lastLogTicks;
     private string _lastLogMsg = "";
 
@@ -246,6 +248,22 @@ public sealed class BrowserBridge : IDisposable
         }
 
         if (!TryParse(body, out var np, out var ping)) { Reply(res, 400, Err("invalid body"), origin); return; }
+
+        // Diagnostics: which extension copy / tab reports what. One row whenever the (video, title) pair changes, at most
+        // twice a second, so alternating tabs or stale titles show up in captions.log without flooding it.
+        if (!ping)
+        {
+            string sig = np!.VideoId + "|" + np.Title;
+            long tick = Environment.TickCount64;
+            if (sig != _lastReportSig && tick - _lastReportTick > 500)
+            {
+                _lastReportSig = sig; _lastReportTick = tick;
+                string o = origin ?? "";
+                string who = o.Length > 8 ? o[^8..] : o;
+                string T(string x, int n) => x.Length > n ? x[..n] : x;
+                Info($"report ext=..{who} vid={np.VideoId} music={np.IsMusic} paused={np.Paused} dur={np.DurationMs / 1000}s title='{T(np.Title, 40)}' ch='{T(np.Channel, 20)}'");
+            }
+        }
 
         // Several YouTube tabs (or browsers) report concurrently: a paused tab must not overwrite a
         // different video that is actively playing (reported within the last 3 s), or lyrics flip between songs.

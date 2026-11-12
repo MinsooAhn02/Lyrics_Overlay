@@ -36,6 +36,7 @@ public sealed class LyricsController
     private string _currentKey = "";
     private CancellationTokenSource? _cts;
     private NowPlaying? _np;                    // latest track handed to OnTrack
+    private NowPlaying? _lastRaw;               // latest state exactly as reported (also when the lookup was skipped)
     private string _captionVideo = "";          // video whose caption-derived lyrics (official or re-timed) are displayed
     private string _captionKind = "";           // "captions" (official) | "aligned" (reference lyrics re-timed on auto captions)
     private string _refVideo = "";              // video the last provider result (re-timing reference) belongs to
@@ -65,6 +66,11 @@ public sealed class LyricsController
     /// <summary>Reacts to a now-playing change: cancels any in-flight lookup and starts a new one when the track changes.</summary>
     public void OnTrack(NowPlaying np)
     {
+        _lastRaw = np;
+        // The user said this "non-music" video is music: look it up like any song.
+        if (np.Skip == "nonmusic" && np.VideoId.Length > 0 && CaptionHub.IsForcedMusic(np.VideoId))
+            np = np with { Skip = "" };
+
         // Bridge says ad / non-music: no lookup; PlainText carries the reason code ("ad" | "nonmusic").
         if (np.HasSession && np.Skip.Length > 0)
         {
@@ -72,6 +78,8 @@ public sealed class LyricsController
             if (skipKey == _currentKey)
                 return;
             _currentKey = skipKey;
+            DiagLog.LogCompleted(LyricsAggregator.Track(np.Title, np.Artist), "lookup", DiagResult.Plain,
+                $"[{np.VideoId}|dur {np.DurationMs / 1000:0}s] skipped: {np.Skip}", 0, false);
             _cts?.Cancel();
             Raise(new LyricsState(LyricsKind.Skipped, PlainText: np.Skip));
             return;
@@ -119,6 +127,16 @@ public sealed class LyricsController
         _cts?.Cancel();
         _cts = new CancellationTokenSource();
         _ = FetchLoopAsync(np, _cts.Token);
+    }
+
+    /// <summary>User override for a video wrongly classified as non-music: remember it and look the song up now.</summary>
+    public void ForceMusic(string videoId)
+    {
+        if (videoId.Length == 0) return;
+        CaptionHub.SetForcedMusic(videoId);
+        _currentKey = "";
+        if (_lastRaw is { } raw && raw.VideoId == videoId)
+            OnTrack(raw);
     }
 
     /// <summary>User toggle: stop / resume using the official captions of <paramref name="videoId"/>, then redo the lookup.</summary>

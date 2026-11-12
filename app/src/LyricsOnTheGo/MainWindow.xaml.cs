@@ -793,6 +793,14 @@ public partial class MainWindow : Window
     private void UpdateCaptionButton()
     {
         string id = _lastNp.VideoId;
+        if (_lastState is { Kind: LyricsKind.Skipped, PlainText: "nonmusic" } && id.Length > 0)
+        {   // wrongly classified as non-music? one click looks the song up anyway
+            CaptionButton.Visibility = Visibility.Visible;
+            CaptionButton.Opacity = 1.0;
+            CaptionButton.Content = "♪";
+            CaptionButton.ToolTip = Tx("forceMusic", "This is music - look up lyrics anyway", "이 영상은 음악이에요 - 가사 찾기");
+            return;
+        }
         string kind = _lyrics.CaptionKind(id);          // "captions" | "aligned" | ""
         bool rejected = id.Length > 0 && CaptionHub.IsRejected(id);
         var info = id.Length > 0 ? CaptionHub.Get(id) : null;
@@ -814,6 +822,11 @@ public partial class MainWindow : Window
         string id = _lastNp.VideoId;
         if (id.Length == 0)
             return;
+        if (_lastState is { Kind: LyricsKind.Skipped, PlainText: "nonmusic" })
+        {
+            _lyrics.ForceMusic(id);
+            return;
+        }
         _lyrics.SetCaptionsRejected(id, _lyrics.ShowingCaptions(id));   // showing -> switch off; off -> switch on
         UpdateCaptionButton();
     }
@@ -1494,6 +1507,7 @@ public partial class MainWindow : Window
         }
 
         _lastState = state;
+        UpdateCaptionButton();   // the skipped screen offers a "this is music" button
         _japaneseHidden = false;
 
         // Filter at display time only; the cached/fetched result stays untouched.
@@ -1539,7 +1553,7 @@ public partial class MainWindow : Window
 
     private static string SkippedText(string? reason) => reason == "ad"
         ? Tx("adPlaying", "Ad playing", "광고 재생 중")
-        : Tx("notMusic", "Not a music video - lyrics lookup skipped", "음악 영상이 아니어서 가사 조회를 생략함");
+        : Tx("notMusic", "Not a music video - lyrics lookup skipped (hover: ♪ button)", "음악 영상이 아니어서 가사 조회를 생략함 (마우스를 올리고 ♪ 버튼)");
 
     /// <summary>Re-render whatever status is currently shown in the new language. Synced/plain
     /// lyrics are content, not localized, so they are left untouched.</summary>

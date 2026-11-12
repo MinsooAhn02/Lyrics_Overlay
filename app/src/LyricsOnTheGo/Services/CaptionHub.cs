@@ -26,6 +26,28 @@ public static class CaptionHub
     private static readonly string FilePath = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "LyricsOnTheGo", "caption-rejects.json");
 
+    private static readonly string ForcePath = Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "LyricsOnTheGo", "force-music.json");
+    private static readonly HashSet<string> ForcedMusic = LoadSet(ForcePath);
+
+    /// <summary>The user said "this is music" for a video the extension classified as non-music.</summary>
+    public static bool IsForcedMusic(string videoId) { lock (ForcedMusic) return ForcedMusic.Contains(videoId); }
+
+    public static void SetForcedMusic(string videoId)
+    {
+        lock (ForcedMusic)
+        {
+            if (!ForcedMusic.Add(videoId)) return;
+            if (ForcedMusic.Count > 500) { ForcedMusic.Clear(); ForcedMusic.Add(videoId); }   // keep the file small
+            try
+            {
+                Directory.CreateDirectory(Path.GetDirectoryName(ForcePath)!);
+                File.WriteAllText(ForcePath, JsonSerializer.Serialize(ForcedMusic));
+            }
+            catch (Exception ex) { DiagLog.LogCompleted("captions", "CaptionHub", DiagResult.Error, "save force-music failed: " + ex.GetType().Name, 0, false); }
+        }
+    }
+
     private static readonly object Gate = new();
     private static readonly Dictionary<string, CaptionsInfo> Store = new();
     private static readonly Queue<string> Order = new();
@@ -81,12 +103,14 @@ public static class CaptionHub
         }
     }
 
-    private static HashSet<string> Load()
+    private static HashSet<string> Load() => LoadSet(FilePath);
+
+    private static HashSet<string> LoadSet(string path)
     {
         try
         {
-            if (File.Exists(FilePath))
-                return JsonSerializer.Deserialize<HashSet<string>>(File.ReadAllText(FilePath)) ?? new();
+            if (File.Exists(path))
+                return JsonSerializer.Deserialize<HashSet<string>>(File.ReadAllText(path)) ?? new();
         }
         catch { /* unreadable: start empty */ }
         return new();

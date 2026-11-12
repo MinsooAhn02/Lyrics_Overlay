@@ -58,7 +58,11 @@ public sealed class LyricsController
     public event Action? CaptionsChanged;
 
     /// <summary>True when the official captions of <paramref name="videoId"/> are what is displayed.</summary>
-    public bool ShowingCaptions(string videoId) => videoId.Length > 0 && _captionVideo == videoId;
+    public bool ShowingCaptions(string videoId) => CaptionsShown(videoId);
+
+    // A track without a video id (a plain media-session source such as Spotify) can never be "showing captions":
+    // comparing two empty ids as equal made its lookup result silently never reach the screen.
+    private bool CaptionsShown(string videoId) => videoId.Length > 0 && _captionVideo == videoId;
 
     /// <summary>"captions" | "aligned" | "mix" when caption-derived lyrics are displayed for <paramref name="videoId"/>, else "".</summary>
     public string CaptionKind(string videoId) => ShowingCaptions(videoId) ? _captionKind : "";
@@ -230,7 +234,7 @@ public sealed class LyricsController
             bool replace = shown is null || (!SameLyrics(shown, result) && Rank(result) >= Rank(shown));
             if (replace && useCache)
                 LyricsCache.Write(cacheKey, result);
-            if (_captionVideo != np.VideoId)   // late captions may have taken over meanwhile
+            if (!CaptionsShown(np.VideoId))   // late captions may have taken over meanwhile
             {
                 bool aligned = captionsEligible && await Task.Run(() => TryAlign(np, result, CaptionHub.Get(np.VideoId), ct));
                 if (ct.IsCancellationRequested)
@@ -239,7 +243,7 @@ public sealed class LyricsController
                     Deliver(result);
             }
         }
-        else if (shown is null && _captionVideo != np.VideoId)
+        else if (shown is null && !CaptionsShown(np.VideoId))
             Raise(new LyricsState(LyricsKind.NotFound));
         CaptionsChanged?.Invoke();
     }

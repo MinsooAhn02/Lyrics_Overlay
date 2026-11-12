@@ -1425,6 +1425,21 @@ public partial class MainWindow : Window
             if (BridgeFreshReport(out var b, out var at)
                 && !(b.Paused && smtc.HasSession && smtc.IsPlaying && !smtc.IsBrowser))
                 return FromBridge(b, at);
+            // Stale report, but the browser's own session still shows that song: keep the video identity
+            // (same key → no second lookup, captions stay usable). Play state/position come from the live
+            // session; a stale ad report is not reused (the ad may be over).
+            if (_bridge is { Latest: { IsAd: false } last } && _settings.BridgeEnabled && smtc.HasSession && smtc.IsBrowser
+                && DateTimeOffset.UtcNow - _bridge.LatestAt < SameSong.MaxReportAge
+                && SameSong.Matches(smtc.Title, last.Title, last.Track))
+            {
+                var kept = FromBridge(last, _bridge.LatestAt);
+                return kept with
+                {
+                    IsPlaying = smtc.IsPlaying,
+                    // Firefox sessions may carry no position (0): then extrapolate from the report instead.
+                    PositionMs = smtc.PositionMs > 0 ? smtc.PositionMs : kept.PositionMs,
+                };
+            }
         }
         catch (Exception ex)
         {

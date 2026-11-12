@@ -8,5 +8,6 @@
   <ItemGroup>
     <Compile Include="..\..\app\src\LyricsOnTheGo\Services\TitleDisplay.cs" />
     <Compile Include="..\..\app\src\LyricsOnTheGo\Services\TitleCleaner.cs" />
+    <Compile Include="..\..\app\src\LyricsOnTheGo\Services\SameSong.cs" />
   </ItemGroup>
 </Project>

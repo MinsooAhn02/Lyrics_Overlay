@@ -17,7 +17,66 @@
     if (e.source !== window || e.origin !== location.origin || !e.data) return;
     if (e.data.src === 'lotg-main') main = e.data;
     else if (e.data.src === 'lotg-cap' && /^[A-Za-z0-9_-]{11}$/.test(e.data.videoId)) { capPending = e.data; capTriedAt = 0; sendCaptions(); }
+    else if (e.data.src === 'lotg-list' && listReq && e.data.req === listReq.id) { const r = listReq; listReq = null; r.resolve(e.data); }
   });
+
+  // ---- Own shuffle (youtube.com playlists): every playable song once, in random order, then a new order ----
+  // YouTube's shuffle only mixes the part of the list it has loaded. State lives in this tab's sessionStorage so it
+  // survives the full page load of each move.
+  const SHUF_KEY = 'lotg-shuffle';
+  let listReq = null, shufBusy = false, shufErr = '';
+  const urlParam = (k) => new URLSearchParams(location.search).get(k) || '';
+  // Mixes (RD...) are endless generated lists: nothing to read in full.
+  const listId = () => { const l = urlParam('list'); return /^[A-Za-z0-9_-]{10,64}$/.test(l) && !l.startsWith('RD') ? l : ''; };
+  const loadShuf = () => {
+    try { const s = JSON.parse(sessionStorage.getItem(SHUF_KEY) || 'null'); return s && typeof s.list === 'string' && Array.isArray(s.order) && Number.isInteger(s.pos) ? s : null; }
+    catch (e) { return null; }
+  };
+  const saveShuf = (s) => { try { if (s) sessionStorage.setItem(SHUF_KEY, JSON.stringify(s)); else sessionStorage.removeItem(SHUF_KEY); return true; } catch (e) { return false; } };
+  const shufActive = () => { const s = loadShuf(), l = listId(); return s && l && s.list === l ? s : null; };
+  // Fisher–Yates; the current song goes first so the order starts where the user is.
+  const shuffled = (ids, first) => {
+    const a = ids.filter((x) => x !== first);
+    for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; }
+    return ids.includes(first) ? [first, ...a] : a;
+  };
+  function shuffleState() {
+    if (IS_MUSIC_HOST || !listId()) return '';
+    if (shufBusy) return 'busy';
+    if (shufActive()) return 'on';
+    return shufErr ? 'err:' + shufErr : 'off';
+  }
+  const fetchList = (list) => new Promise((resolve) => {
+    const id = Math.random().toString(36).slice(2);
+    const t = setTimeout(() => { if (listReq && listReq.id === id) { listReq = null; resolve({ error: 'timeout' }); } }, 60000);
+    listReq = { id, resolve: (r) => { clearTimeout(t); resolve(r); } };
+    window.postMessage({ src: 'lotg-cmd', type: 'playlist', list, req: id }, location.origin);
+  });
+  async function shuffleOn(thenNext) {
+    const list = listId();
+    if (!list || shufBusy) return;
+    shufBusy = true; shufErr = ''; send(true);
+    const r = await fetchList(list);
+    shufBusy = false;
+    const ids = [...new Set((Array.isArray(r.ids) ? r.ids : []).filter((x) => typeof x === 'string' && /^[A-Za-z0-9_-]{11}$/.test(x)))];
+    if (listId() !== list) return;   // the user left the playlist meanwhile
+    if (ids.length < 2) shufErr = String(r.error || 'empty list').slice(0, 30);
+    else if (!saveShuf({ list, order: shuffled(ids, urlParam('v')), pos: 0 })) shufErr = 'storage blocked';
+    else if (thenNext) { go(1); return; }
+    send(true);
+  }
+  // Moves along the shuffled order; false when shuffle is not on for this playlist (the caller does the normal thing).
+  function go(step) {
+    const s = shufActive();
+    if (!s) return false;
+    const next = s.pos + step;
+    if (next < 0) { const v = getVideo(); if (v) v.currentTime = 0; return true; }
+    if (next >= s.order.length) { shuffleOn(true); return true; }   // every song played: new order
+    s.pos = next;
+    if (!saveShuf(s)) { shufErr = 'storage blocked'; return false; }
+    location.assign(`/watch?v=${s.order[next]}&list=${s.list}`);
+    return true;
+  }
 
   async function sendCaptions() {
     const c = capPending;
@@ -192,6 +251,7 @@
       isAd: !!document.querySelector('.html5-video-player.ad-showing'),
       isMusic: IS_MUSIC_HOST || musicLike(category, dur, sameVideo && (String(main.desc || '').match(/\d{1,2}:\d{2}/g) || []).length >= 3),
       sentAtMs: Date.now(),
+      shuffle: shuffleState(),   // '' (not a playlist) | off | busy | on | err:<reason>  (overlay shuffle button)
       // diagnostics only (logged by the app): extension version, url video id, player-data video id, same video?
       dbg: `v${EXT_VERSION} u=${new URLSearchParams(location.search).get('v') || '-'} m=${(main && main.videoId) || '-'} sv=${sameVideo ? 1 : 0}`,
     };
@@ -236,8 +296,10 @@
   function run(cmd) {
     const v = getVideo();
     if (cmd === 'toggle') { if (v) (v.paused ? v.play() : v.pause()); }
-    else if (cmd === 'next') click('.ytp-next-button', 'ytmusic-player-bar .next-button', '.next-button');
-    else if (cmd === 'prev') prev();
+    else if (cmd === 'next') { if (!go(1)) click('.ytp-next-button', 'ytmusic-player-bar .next-button', '.next-button'); }
+    else if (cmd === 'prev') { if (!go(-1)) prev(); }
+    else if (cmd === 'shuffle:on') shuffleOn(false);
+    else if (cmd === 'shuffle:off') { saveShuf(null); shufErr = ''; send(true); }
     else if (typeof cmd === 'string') {
       const m = /^seek:(\d{1,8})$/.exec(cmd);
       if (!m || !v || document.querySelector('.html5-video-player.ad-showing')) return;
@@ -263,6 +325,8 @@
     if (!v || hooked.has(v)) return;
     hooked.add(v);
     for (const n of ['play', 'pause', 'seeked', 'ratechange', 'loadedmetadata']) v.addEventListener(n, onEvt);
+    // Capture phase: runs before YouTube's own end-of-video handling moves to the playlist's next item.
+    v.addEventListener('ended', () => { if (!document.querySelector('.html5-video-player.ad-showing')) go(1); }, true);
   };
 
   // Commands ride on POST replies, so polling is the command latency: 0.5 s after a command,

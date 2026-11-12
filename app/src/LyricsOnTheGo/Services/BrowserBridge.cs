@@ -28,7 +28,8 @@ public sealed record BrowserNowPlaying(
     string? Artist = null,
     string? Album = null,
     string? MetaSource = null,
-    string? Dbg = null);
+    string? Dbg = null,
+    string? Shuffle = null);   // youtube.com playlist: off | busy | on | err:<reason>; empty/absent = no shuffle button
 
 /// <summary>
 /// Loopback-only HTTP receiver for the Chrome/Firefox extension. POST /v1/now-playing returns
@@ -58,7 +59,7 @@ public sealed class BrowserBridge : IDisposable
         @"^moz-extension://[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\z", RegexOptions.Compiled);
     private static readonly Regex VideoIdRe =new("^[A-Za-z0-9_-]{11}$", RegexOptions.Compiled);
     private static readonly Regex SeekRe = new(@"^seek:[0-9]{1,8}\z", RegexOptions.Compiled);
-    private static readonly HashSet<string> AllowedCommands = new() { "toggle", "next", "prev" };
+    private static readonly HashSet<string> AllowedCommands = new() { "toggle", "next", "prev", "shuffle:on", "shuffle:off" };
     private static readonly JsonSerializerOptions JsonOpts = new()
     {
         PropertyNameCaseInsensitive = true,
@@ -403,6 +404,7 @@ public sealed class BrowserBridge : IDisposable
                 Track = StripControl(v.Track), Artist = StripControl(v.Artist),
                 Album = StripControl(v.Album), MetaSource = StripControl(v.MetaSource),
                 Dbg = StripControl(v.Dbg).Length > 120 ? "" : StripControl(v.Dbg),
+                Shuffle = StripControl(v.Shuffle).Length > 40 ? "" : StripControl(v.Shuffle),
             };
             if (v.Title.Length > 300 || v.Channel.Length > 200) return false;
             if (v.Track!.Length > 300 || v.Artist!.Length > 200 || v.Album!.Length > 200 || v.MetaSource!.Length > 16) return false;

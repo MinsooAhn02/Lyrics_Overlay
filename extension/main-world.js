@@ -158,6 +158,47 @@
     if (capVideo === vid) window.postMessage(out, location.origin);
   }
   // content.js delegates seeks here: the player API keeps YouTube's own state (UI, buffering) consistent.
+  // ---- Own shuffle: every playable video of a playlist, read through the page's own browse API (100 per page) ----
+  const findKey = (n, k, depth = 0) => {
+    if (!n || typeof n !== 'object' || depth > 40) return null;
+    if (n[k]) return n[k];
+    for (const x in n) { const r = findKey(n[x], k, depth + 1); if (r) return r; }
+    return null;
+  };
+  // Only the playlist's own rows and continuation: the page also carries "related playlists" shelves with their own tokens.
+  const scanList = (node, out) => {
+    if (Array.isArray(node)) { for (const v of node) scanList(v, out); return; }
+    if (!node || typeof node !== 'object') return;
+    if (node.playlistVideoRenderer) { const r = node.playlistVideoRenderer; if (r.isPlayable !== false && r.videoId) out.ids.push(r.videoId); return; }
+    if (node.continuationItemRenderer) { const m = JSON.stringify(node.continuationItemRenderer).match(/"continuationCommand":\{"token":"([^"]+)"/); if (m) out.next = m[1]; return; }
+    for (const k in node) scanList(node[k], out);
+  };
+  async function readPlaylist(list) {
+    const cfg = window.ytcfg, key = cfg?.get?.('INNERTUBE_API_KEY'), context = cfg?.get?.('INNERTUBE_CONTEXT');
+    if (!key || !context) throw new Error('no page config');
+    let body = { context, browseId: 'VL' + list };
+    const ids = [];
+    for (let page = 0; page < 60; page++) {   // ponytail: 6000-song cap (60 pages), raise if someone has bigger lists
+      const r = await fetch(`/youtubei/v1/browse?key=${encodeURIComponent(key)}&prettyPrint=false`,
+        { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+      if (!r.ok) throw new Error('http ' + r.status);
+      const j = await r.json(), out = { ids: [], next: null };
+      scanList(page === 0 ? findKey(j, 'playlistVideoListRenderer') : j.onResponseReceivedActions, out);
+      ids.push(...out.ids);
+      if (!out.next) break;
+      body = { context, continuation: out.next };
+    }
+    return ids;
+  }
+  window.addEventListener('message', async (e) => {
+    const d = e.data;
+    if (e.source !== window || e.origin !== location.origin || !d || d.src !== 'lotg-cmd' || d.type !== 'playlist') return;
+    if (typeof d.list !== 'string' || !/^[A-Za-z0-9_-]{10,64}$/.test(d.list)) return;
+    let reply;
+    try { reply = { ids: await readPlaylist(d.list) }; } catch (err) { reply = { error: String(err && err.message || err).slice(0, 30) }; }
+    window.postMessage({ src: 'lotg-list', req: d.req, list: d.list, ...reply }, location.origin);
+  });
+
   window.addEventListener('message', (e) => {
     const d = e.data;
     if (e.source !== window || e.origin !== location.origin || !d || d.src !== 'lotg-cmd' || d.type !== 'seek') return;

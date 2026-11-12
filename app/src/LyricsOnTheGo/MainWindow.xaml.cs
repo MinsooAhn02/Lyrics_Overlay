@@ -1471,6 +1471,7 @@ public partial class MainWindow : Window
                 return;   // another app is playing: leave the source choice to the poll
 
             var np = FromBridge(b, _bridge.LatestAt);
+            UpdateShuffleButton();   // shuffle state changes without any playback change
             if (_lastNp.VideoId == np.VideoId && _lastNp.Skip == np.Skip && _lastNp.IsPlaying == np.IsPlaying
                 && _lastNp.Title == np.Title && Math.Abs(_lastNp.DurationMs - np.DurationMs) < 1000)
             {
@@ -1510,6 +1511,31 @@ public partial class MainWindow : Window
 
         _lyrics.OnTrack(np);
         UpdateCaptionButton();
+        UpdateShuffleButton();
+    }
+
+    /// <summary>Shuffle button: shown on youtube.com playlists (the extension reports a shuffle state for them).
+    /// Bright = our shuffle is on; "…" while the playlist is being read; a failure shows its reason as the tooltip.</summary>
+    private void UpdateShuffleButton()
+    {
+        string s = _bridge?.Latest is { } b && b.VideoId == _lastNp.VideoId && _lastNp.VideoId.Length > 0 ? b.Shuffle ?? "" : "";
+        ShuffleButton.Visibility = s.Length > 0 ? Visibility.Visible : Visibility.Collapsed;
+        ShuffleButton.Opacity = s == "on" ? 1.0 : 0.45;
+        ShuffleButton.Content = s == "busy" ? "…" : "셔플";
+        ShuffleButton.ToolTip = s switch
+        {
+            "on" => "재생목록 전체를 한 번씩 섞어 재생 중 - 눌러서 끄기",
+            "busy" => "재생목록을 읽는 중",
+            _ when s.StartsWith("err:", StringComparison.Ordinal) => "셔플 실패: " + s[4..] + " - 눌러서 다시 시도",
+            _ => "재생목록 전체를 한 번씩 섞어 재생",
+        };
+    }
+
+    private void OnToggleShuffle(object sender, RoutedEventArgs e)
+    {
+        if (_bridge?.Latest is not { Shuffle: { Length: > 0 } s } || s == "busy")
+            return;
+        _bridge.EnqueueCommand(s == "on" ? "shuffle:off" : "shuffle:on");
     }
 
     private LyricsState _lastState = new(LyricsKind.NoTrack);

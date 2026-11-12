@@ -332,6 +332,8 @@
                             Click="OnSeekForward" Content="+5" FontSize="11" ToolTip="+5s" />
                     <Button x:Name="CaptionButton" Style="{StaticResource HeaderButton}" Width="26" Height="24" FontSize="10"
                             FontWeight="Bold" Click="OnToggleCaptions" Content="CC" Visibility="Collapsed" />
+                    <Button x:Name="ShuffleButton" Style="{StaticResource HeaderButton}" Width="32" Height="24" FontSize="10"
+                            FontWeight="Bold" Click="OnToggleShuffle" Content="셔플" Visibility="Collapsed" />
                 </StackPanel>
             </StackPanel>
         </Border>

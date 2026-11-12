@@ -56,6 +56,27 @@ public static class LyricsCache
         }
     }
 
+    /// <summary>Checked against LRCLIB within the last week: lyrics practically never change, so a fresh entry is shown
+    /// without a network lookup (3 parallel searches carrying ~18 full lyrics each, per song).</summary>
+    public static readonly TimeSpan FreshFor = TimeSpan.FromDays(7);
+
+    public static bool IsFresh(string key)
+    {
+        try
+        {
+            string path = Path.Combine(Dir, key + ".json");
+            return File.Exists(path) && DateTime.UtcNow - File.GetLastWriteTimeUtc(path) < FreshFor;
+        }
+        catch { return false; }
+    }
+
+    /// <summary>Marks an entry as just re-checked (the lookup found the same lyrics, so nothing was rewritten).</summary>
+    public static void Touch(string key)
+    {
+        try { File.SetLastWriteTimeUtc(Path.Combine(Dir, key + ".json"), DateTime.UtcNow); }
+        catch { /* best-effort */ }
+    }
+
     public static void Write(string key, LyricsResult result)
     {
         try

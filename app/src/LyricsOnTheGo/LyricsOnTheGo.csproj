@@ -26,6 +26,9 @@
          own EN/ES strings live in I18n.cs and are unaffected; this just removes the per-language
          framework-string folders from the publish output. -->
     <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
+    <!-- Small heaps (~100 MB): background GC's extra thread and reserved memory buy nothing here; blocking gen2 pauses
+         are a few ms. -->
+    <ConcurrentGarbageCollection>false</ConcurrentGarbageCollection>
 
     <!-- SINGLE SOURCE OF TRUTH for the app version. AssemblyVersion, FileVersion and
          InformationalVersion all derive from this; the User-Agent reads it at runtime; and the

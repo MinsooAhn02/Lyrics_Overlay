@@ -192,7 +192,10 @@ public sealed class LyricsController
         // A long video may be a mix: hold the provider lookup back until the extension's report (with the description's
         // track list) is in, so a wrong title-based guess is never shown first. Shorter videos look up concurrently.
         bool maybeMix = captionsEligible && np.DurationMs >= LongVideoMs;
-        Task<LyricsResult>? provTask = maybeMix ? null : FetchProvidersAsync(query, ct);
+        // Cached and re-checked within a week: no network lookup, the cached result goes through the same path below
+        // (re-timing to captions etc.). Older entries are looked up again and replaced only if the lyrics changed.
+        bool fresh = shown is not null && LyricsCache.IsFresh(cacheKey);
+        Task<LyricsResult>? provTask = maybeMix || fresh ? null : FetchProvidersAsync(query, ct);
 
         if (captionsEligible)
         {
@@ -220,7 +223,7 @@ public sealed class LyricsController
             }
         }
 
-        provTask ??= FetchProvidersAsync(query, ct);
+        provTask ??= fresh ? Task.FromResult(shown!) : FetchProvidersAsync(query, ct);
         var result = await provTask;
         if (ct.IsCancellationRequested)
             return;
@@ -234,6 +237,8 @@ public sealed class LyricsController
             bool replace = shown is null || (!SameLyrics(shown, result) && Rank(result) >= Rank(shown));
             if (replace && useCache)
                 LyricsCache.Write(cacheKey, result);
+            else if (useCache && !fresh)
+                LyricsCache.Touch(cacheKey);   // re-checked, unchanged: quiet for another week
             if (!CaptionsShown(np.VideoId))   // late captions may have taken over meanwhile
             {
                 bool aligned = captionsEligible && await Task.Run(() => TryAlign(np, result, CaptionHub.Get(np.VideoId), ct));

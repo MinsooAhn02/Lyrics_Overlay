@@ -1338,7 +1338,11 @@ public partial class MainWindow : Window
 
     private async System.Threading.Tasks.Task PollAsync()
     {
-        NowPlaying np = PreferBridge(await _smtc.GetNowPlayingAsync());
+        // A fresh, playing extension report always wins (PreferBridge), so the Windows media session is not queried
+        // then: one WinRT round trip per second saved while a YouTube tab plays.
+        NowPlaying np = BridgeFreshReport(out var b, out var at) && !b.Paused
+            ? FromBridge(b, at)
+            : PreferBridge(await _smtc.GetNowPlayingAsync());
         ApplyNowPlaying(np);
     }
 

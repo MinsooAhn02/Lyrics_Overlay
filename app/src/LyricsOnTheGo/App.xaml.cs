@@ -33,7 +33,16 @@ public partial class App : Application
             return;
         }
         new MainWindow().Show();
+
+        // Leak testing only (tools\leak-check.ps1 sets it): every 30 s a FULL collection, then the managed heap that is
+        // really retained goes to captions.log. Never active in normal use (the forced GC costs a few ms).
+        if (Environment.GetEnvironmentVariable("LOTG_MEMLOG") == "1")
+            _memLog = new Timer(_ => DiagLog.LogCompleted("bridge", "memory", DiagResult.Plain,
+                $"memlog heapMB={GC.GetTotalMemory(forceFullCollection: true) / 1048576.0:0.0} gen2={GC.CollectionCount(2)}", 0, false),
+                null, TimeSpan.FromSeconds(30), TimeSpan.FromSeconds(30));
     }
+
+    private Timer? _memLog;
 
     protected override void OnExit(ExitEventArgs e)
     {
